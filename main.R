@@ -10,7 +10,8 @@ f <- lapply(list.files(path = here::here("R"), full.names = TRUE,
 # Plan analysis ------------------------------------------------------------
 
 read_data <- drake_plan(
-  boats = clean_boats(file_in("data/raw/timor-boats.csv"))
+  boats = clean_boats(file_in("data/raw/timor-boats.csv")),
+  trips = clean_trips(file_in("data/raw/timor-trips.csv")),
 )
 
 full_plan <- rbind(
