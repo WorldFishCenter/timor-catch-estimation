@@ -2,14 +2,6 @@ library(DBI)
 library(bigrquery)
 library(tidyverse)
 
-# This script helps download the data used for this project but manual input is
-# necessary. Authentication with a Google account with access to the datasets in
-# needed. Catch data is downloaded automatically. Track points data is exported
-# from BigQuery into into a series of files in Google Cloud Storage and then
-# should be downloaded manually. Trip data is downloaded manually from
-# https://analytics.pelagicdata.com/ filtering for MAF/WorldFish as customer and
-# date after 2019-04-01 which is roughly when catch collection starts
-
 bq_auth(use_oob = TRUE)
 
 # catch -------------------------------------------------------------------
@@ -64,21 +56,3 @@ bq_table_save(peksas_timor_points,
               destination_uris = dest_uri_gstorage)
 
 bq_table_delete(peskas_timor_points)
-
-# Download manualluy using gsutil:
-# gsutil cp \
-# gs://timor/timor-all_points_2020-12-03_000000000000.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000001.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000002.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000003.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000004.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000005.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000006.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000007.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000008.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000009.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000010.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000011.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000012.csv.gz \
-# gs://timor/timor-all_points_2020-12-03_000000000013.csv.gz \
-# .

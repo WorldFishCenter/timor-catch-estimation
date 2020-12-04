@@ -1,33 +1,38 @@
 README
 ================
 
-## R Markdown
+## Data download
 
-This is an R Markdown document. Markdown is a simple formatting syntax
-for authoring HTML, PDF, and MS Word documents. For more details on
-using R Markdown see <http://rmarkdown.rstudio.com>.
+We use Trip, Boat, Device, Points, and Catch data.
 
-When you click the **Knit** button a document will be generated that
-includes both content as well as the output of any embedded R code
-chunks within the document. You can embed an R code chunk like this:
+Trip, Boat, and Device data should be downloaded manually from
+<https://analytics.pelagicdata.com/>. To match you should filter for
+MAF/WorldFish as customer and date after 2019-04-01 which is roughly
+when catch collection starts
 
-``` r
-summary(cars)
+The script `data-download.R` helps download Points and Catch data but
+manual input is necessary. When you run the script, authentication with
+a Google account with access to the datasets needed. Catch data is
+downloaded automatically with the script but Point data is not.
+Specifically Point data is exported from BigQuery into into a series of
+files in Google Cloud Storage and then should be downloaded manually.
+One can use gsutil to simplify this
+
+``` bash
+gsutil cp \
+gs://timor/timor-all_points_2020-12-03_000000000000.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000001.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000002.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000003.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000004.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000005.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000006.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000007.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000008.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000009.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000010.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000011.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000012.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000013.csv.gz \
+.
 ```
-
-    ##      speed           dist       
-    ##  Min.   : 4.0   Min.   :  2.00  
-    ##  1st Qu.:12.0   1st Qu.: 26.00  
-    ##  Median :15.0   Median : 36.00  
-    ##  Mean   :15.4   Mean   : 42.98  
-    ##  3rd Qu.:19.0   3rd Qu.: 56.00  
-    ##  Max.   :25.0   Max.   :120.00
-
-## Including Plots
-
-You can also embed plots, for example:
-
-![](README_files/figure-gfm/pressure-1.png)<!-- -->
-
-Note that the `echo = FALSE` parameter was added to the code chunk to
-prevent printing of the R code that generated the plot.

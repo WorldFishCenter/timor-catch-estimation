@@ -3,26 +3,35 @@ title: "README"
 output: github_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+## Data download
+
+We use Trip, Boat, Device, Points, and Catch data. 
+
+Trip, Boat, and Device data should be downloaded manually from [https://analytics.pelagicdata.com/](https://analytics.pelagicdata.com/). 
+To match you should filter for MAF/WorldFish as customer and
+date after 2019-04-01 which is roughly when catch collection starts
+
+The script `data-download.R` helps download Points and Catch data but manual input is necessary. 
+When you run the script, authentication with a Google account with access to the datasets needed. 
+Catch data is downloaded automatically with the script but Point data is not. 
+Specifically Point data is exported from BigQuery into into a series of files in Google Cloud Storage and then should be downloaded manually. 
+One can use gsutil to simplify this
+
+```{bash, eval = F}
+gsutil cp \
+gs://timor/timor-all_points_2020-12-03_000000000000.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000001.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000002.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000003.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000004.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000005.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000006.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000007.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000008.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000009.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000010.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000011.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000012.csv.gz \
+gs://timor/timor-all_points_2020-12-03_000000000013.csv.gz \
+.
 ```
-
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
