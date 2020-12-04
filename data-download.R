@@ -35,10 +35,7 @@ dbListTables(tracks_connection)
 
 tracks_dataset <- bq_dataset("peskas", "pelagic_data")
 
-tracks_query <-
-"SELECT *
-FROM `pelagic_data_raw`
-WHERE (`time` >= '2019-04-20T00:00:00Z')"
+tracks_query <- readLines("points-witth-catch.sql") %>% paste(collapse = " ")
 
 peksas_timor_points <- bq_table("peskas", "pelagic_data", "peskas_timor_points")
 
