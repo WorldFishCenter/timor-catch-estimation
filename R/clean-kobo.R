@@ -23,9 +23,11 @@ read_kobo_survey_2 <- function(path){
 # there are any issues there. One row per species caught in each trip
 clean_catch_kobo2 <- function(kobo_survey_2, peskadat_species){
 
-  require(dplyr)
-  require(tidyr)
-  require(purrr)
+  suppressPackageStartupMessages({
+    require(dplyr)
+    require(tidyr)
+    require(purrr)
+  })
 
   # Ignore NAs when adding numbers except if everythinh is an NA
   na_mindful_sum <- function(x){
@@ -98,20 +100,22 @@ clean_catch_kobo2 <- function(kobo_survey_2, peskadat_species){
               across(c(n_individuals, weight), na_mindful_sum),
               species_flags = paste(unique(na.omit(c(n_individuals_flag,
                                                      size_flag))),
-                                    collapse = ";")) %>%
+                                    collapse = ";"),
+              .groups = "drop") %>%
     mutate(species_flags = if_else(species_flags == "",
                                    NA_character_, species_flags),
-           mean_length = round(mean_length, digits = 1)) %>%
-    ungroup()
+           mean_length = round(mean_length, digits = 1))
 
 }
 
 # Takes the survey and cleans the hell out of it. One row per trip
 clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, boats){
 
-  require(dplyr)
-  require(fuzzyjoin)
-  require(stringr)
+  suppressPackageStartupMessages({
+    require(dplyr)
+    require(fuzzyjoin)
+    require(stringr)
+  })
 
   # Summarise catch by trip
   trip_catch_2 <- kobo_catch_2 %>%
@@ -123,7 +127,8 @@ clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, boats){
                                           na.rm = TRUE),
               trip_catch = sum(weight, na.rm = T),
               species_flag = paste(unique(na.omit(c(species_flags))),
-                                   collapse = ";")) %>%
+                                   collapse = ";"),
+              .groups = "drop") %>%
     mutate(species_flag = if_else(species_flag == "", NA_character_,
                                   species_flag))
 
@@ -294,6 +299,7 @@ clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, boats){
                                    gear_mesh_size_flag,
                                    species_flag,
                                    fisher_number_flag)), collapse = ";")) %>%
+    ungroup() %>%
     select(-ends_with("_flag")) %>%
     mutate(flags = if_else(flags == "", NA_character_, flags))
 
