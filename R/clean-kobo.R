@@ -18,7 +18,6 @@ read_kobo_survey_2 <- function(path){
     dplyr::ungroup()
 }
 
-
 # Takes the survey and cleans the catch. Calculates the weight and highlights if
 # there are any issues there. One row per species caught in each trip
 clean_catch_kobo2 <- function(kobo_survey_2, peskadat_species){
@@ -133,7 +132,9 @@ clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, boats){
                                   species_flag))
 
   imei_list <- boats %>%
-    select(imei_long)
+    select(imei_long) %>%
+    # Some IMEIs are repeated
+    distinct()
 
   kobo_survey_2 %>%
     transmute(boat_imei_r = trip_group_imei,
