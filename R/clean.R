@@ -7,7 +7,6 @@ clean_boats <- function(path){
     dplyr::mutate_if(is.character, ~ dplyr::if_else(. == "--", NA_character_, .))
 }
 
-
 clean_trips <- function(path){
   path %>%
     readr::read_delim(delim = ";", col_types = "cccccccdcc") %>%
@@ -27,4 +26,3 @@ clean_trips <- function(path){
       duration = lubridate::duration(duration),
       trip_id = as.character(trip_id))
 }
-
