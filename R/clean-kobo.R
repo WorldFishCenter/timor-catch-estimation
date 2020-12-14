@@ -176,8 +176,8 @@ clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, boats){
     } %>%
     mutate(boat_imei_flag = if_else(is.na(imei_long) & !is.na(boat_imei_r),
                                     "imei__not_found", NA_character_),
-           boat_imei = imei_long) %>%
-    select(-imei_long, -imei_regex, -boat_imei_r) %>%
+           trip_imei = imei_long) %>%
+    select(-imei_long, -imei_regex, -boat_imei_r, -boat_imei) %>%
     # CLEAN BOAT REGISTRATION
     mutate(boat_registration = tolower(boat_registration_r),
            # Only valid if it has characters, then numbers, then
