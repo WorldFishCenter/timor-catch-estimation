@@ -16,3 +16,10 @@ clean_peskasdat_boats <- function(path){
                                                       lubridate::dmy(installation_date)))
 
 }
+
+clean_peskadat_municipalities <- function(path){
+  path %>%
+    readr::read_csv() %>%
+    janitor::clean_names() %>%
+    dplyr::filter(!is.na(municipality_code))
+}
