@@ -26,6 +26,11 @@ pre_process_data <- drake_plan(
 )
 
 fit_models <- drake_plan(
+  vessel_activity_bernoulli = format_vessel_activity(trips_from_points, peskadat_boats, boats_pds,
+                                                     include_last_seen_info = T,
+                                                     correct_pelagic_empty_days = T,
+                                                     period_static_unit = "week",
+                                                     period_seasonal_function = lubridate::week),
   vessel_activity_model = model_vessel_activity(trips_from_points,
                                                  peskadat_boats,
                                                  boats_pds),

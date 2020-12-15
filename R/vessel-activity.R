@@ -1,3 +1,75 @@
+format_vessel_activity <- function(trips_from_points, peskadat_boats, boats_pds,
+                                   include_last_seen_info = T,
+                                   correct_pelagic_empty_days = T,
+                                   period_static_unit = "month",
+                                   period_seasonal_function = lubridate::month){
+
+  suppressPackageStartupMessages({
+    require(dplyr)
+    require(tidyr)
+  })
+
+  boat_info <- peskadat_boats %>%
+    select(boat_id, imei, owner, boat_code, municipality_name, installation_date,
+           primary_gear, secondary_gear)
+
+  last_seen_info <- boats_pds %>%
+    select(imei, last_seen) %>%
+    mutate(trip_end_date_pds = lubridate::as_date(last_seen, tz = "Asia/Dili"),
+           last_seen = TRUE)
+
+  vessel_data <- trips_from_points %>%
+    filter(!is.na(trip_id_pds)) %>%
+    left_join(boat_info, by = c(imei = "imei")) %>%
+    group_by(trip_id_pds) %>%
+    mutate(n_rows = n()) %>%
+    # If there are multiple rows for a pelagic trip, it can be because the same
+    # imei device was used in multiple boats. Here chose the one that matches
+    # best
+    filter(n_rows == 1 |
+             ((trip_end_date_pds > installation_date) &
+                (trip_end_date_pds - installation_date) ==
+                min(trip_end_date_pds - installation_date))) %>%
+    select(imei, boat_id_pds, boat_code, municipality_name, trip_end_date_pds,
+           trip_id_pds)
+
+  # Complete data with absences if last_seen_info is not included, it uses from
+  # first to last tracking
+  vessel_data_complete <- vessel_data %>%
+    {if (include_last_seen_info) { bind_rows(., last_seen_info) } else {.}} %>%
+    group_by(imei) %>%
+    arrange(trip_end_date_pds, .by_group = TRUE) %>%
+    fill(boat_id_pds, boat_code, municipality_name) %>%
+    filter(!is.na(boat_code)) %>%
+    group_by(imei, boat_id_pds) %>%
+    complete(nesting(imei, boat_id_pds, boat_code, municipality_name),
+             trip_end_date_pds = full_seq(trip_end_date_pds, 1)) %>%
+    mutate(individual_boat = paste(imei, boat_id_pds))
+
+  # There are weird stuff from the Pelagic data when things were not downloaded
+  potential_pds_outages <- trips_from_points %>%
+    filter(is.na(imei)) %>%
+    mutate(previous_day = download_date_pds - 1) %>%
+    {c(.$download_date_pds, .$previous_day)} %>%
+    unique()
+
+  vessel_data_pds_corrected <- vessel_data_complete %>%
+    {if (correct_pelagic_empty_days) {
+      filter(., !trip_end_date_pds %in% potential_pds_outages)
+    } else {.}}
+
+  vessel_data_pds_corrected %>%
+    ungroup() %>%
+    mutate(trip_activity = !is.na(trip_id_pds),
+           trip_activity = as.numeric(trip_activity)) %>%
+    mutate(period_static = lubridate::floor_date(trip_end_date_pds,
+                                                 unit = period_static_unit),
+           period_seasonal = period_seasonal_function(trip_end_date_pds),
+           period_seasonal = as.character(period_seasonal),
+           wday = lubridate::wday(trip_end_date_pds, label = T))
+}
+
+
 model_vessel_activity <- function(trips_from_points, peskadat_boats, boats_pds,
                                   include_last_seen_info = T){
 
