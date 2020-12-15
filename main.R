@@ -31,9 +31,9 @@ fit_models <- drake_plan(
                                                      correct_pelagic_empty_days = T,
                                                      period_static_unit = "week",
                                                      period_seasonal_function = lubridate::week),
-  vessel_activity_model = model_vessel_activity(trips_from_points,
-                                                 peskadat_boats,
-                                                 boats_pds),
+  vessel_activity_model = model_vessel_activity(vessel_activity_bernoulli),
+)
+
 )
 
 full_plan <- rbind(
