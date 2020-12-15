@@ -15,6 +15,7 @@ read_data <- drake_plan(
   trips_from_points = clean_trips_from_points(file_in("data/processed/trips.csv")),
   peskadat_species = clean_peskasdat_species(file_in("data/raw/peskaDAT-species.csv")),
   peskadat_boats = clean_peskasdat_boats(file_in("data/raw/peskaDAT-boats.csv")),
+  peskadat_municipalities = clean_peskadat_municipalities(file_in("data/raw/peskaDAT-municipalities.csv")),
   kobo_survey_2 = read_kobo_survey_2(file_in("data/raw/catch_timor_structured.csv")),
 )
 
