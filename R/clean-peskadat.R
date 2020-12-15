@@ -13,7 +13,9 @@ clean_peskasdat_boats <- function(path){
     dplyr::mutate(imei_long = imei,
                   installation_date = dplyr::if_else(stringr::str_detect(installation_date, "/[0-9]{2}$"),
                                                       lubridate::mdy(installation_date),
-                                                      lubridate::dmy(installation_date)))
+                                                      lubridate::dmy(installation_date))) %>%
+    dplyr::mutate(municipality_name = dplyr::if_else(municipality_name == "Manatutu",
+                                                     "Manatuto", municipality_name))
 
 }
 
