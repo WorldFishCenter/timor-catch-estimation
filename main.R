@@ -34,10 +34,12 @@ fit_models <- drake_plan(
   vessel_activity_model = model_vessel_activity(vessel_activity_bernoulli),
 )
 
+notebooks <- drake_plan(
+  vessel_activity_nb = target(rmarkdown::render(knitr_in("notebooks/vessel-activity.Rmd")))
 )
 
 full_plan <- rbind(
-  read_data, pre_process_data, fit_models
+  read_data, pre_process_data, fit_models, notebooks
 )
 
 # Execute plan ------------------------------------------------------------
