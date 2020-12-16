@@ -31,7 +31,19 @@ fit_models <- drake_plan(
                                                      correct_pelagic_empty_days = T,
                                                      period_static_unit = "week",
                                                      period_seasonal_function = lubridate::week),
-  vessel_activity_model = model_vessel_activity(vessel_activity_bernoulli),
+  vessel_activity_bernoulli_m = format_vessel_activity(trips_from_points, peskadat_boats, boats_pds,
+                                                     include_last_seen_info = T,
+                                                     correct_pelagic_empty_days = T,
+                                                     period_static_unit = "month",
+                                                     period_seasonal_function = lubridate::month),
+  vessel_activity_bernoulli_q = format_vessel_activity(trips_from_points, peskadat_boats, boats_pds,
+                                                     include_last_seen_info = T,
+                                                     correct_pelagic_empty_days = T,
+                                                     period_static_unit = "quarter",
+                                                     period_seasonal_function = lubridate::quarter),
+  vessel_activity_model = model_vessel_activity_binomial(vessel_activity_bernoulli),
+  vessel_activity_model_m = model_vessel_activity_binomial(vessel_activity_bernoulli_m),
+  vessel_activity_model_q = model_vessel_activity_binomial(vessel_activity_bernoulli_q),
 )
 
 notebooks <- drake_plan(

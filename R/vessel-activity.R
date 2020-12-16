@@ -92,6 +92,34 @@ model_vessel_activity <- function(vessel_activity_bernoulli){
                 family = "binomial"))
 }
 
+model_vessel_activity_binomial <- function(vessel_activity_bernoulli){
+
+  suppressPackageStartupMessages({
+    require(tidyverse)
+    require(lme4)
+  })
+
+  vessel_data_binomial <- vessel_activity_bernoulli %>%
+    group_by(period_static, individual_boat, boat_code, municipality_name, period_seasonal) %>%
+    summarise(n_days = n(), n_trips = sum(trip_activity), .groups = "drop") %>%
+    filter(!is.na(municipality_name))
+
+  boat_type <- list(canoe = 1,
+                    motor = 2)
+
+    boat_type %>%
+      map(~ filter(vessel_data_binomial, boat_code == .)) %>%
+      map(~ glmer(cbind(n_trips, n_days - n_trips) ~
+                    (1 | municipality_name) +
+                    (1 | period_static) +
+                    (1 | municipality_name : period_static) +
+                    (1 | period_seasonal) +
+                    (1 | individual_boat),
+                  data = .,
+                  family = "binomial"))
+
+}
+
 function(all_trips, peskadat_boats, boats, last_seen_info = TRUE){
 
 
