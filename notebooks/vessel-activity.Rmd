@@ -6,6 +6,7 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, fig.width = 10, fig.height = 7, warning = F)
 library(ggplot2)
+library(ggforce)
 library(magrittr)
 library(tidyverse)
 ```
@@ -14,13 +15,18 @@ Here we look, on a high level, at the tracks data used to determine vessel activ
 
 ## Summary
 
+* There are multiple issues with the trip detection algorithm and device operation that could affect the activity estimates. Until these issues are resolved, activity estimates should be seen as provisional. 
 * Sampling is currently insufficient to reliable report activity estimates at the municipality level, but is to-date enough to paint a picture at the national level with certain confidence. 
 * Canoe boats are under-represented from tracking. About 40% of trackers devices have been installed in canoes, but they constitute about 70% of the fishing fleet. The disparity is larger in some municipalities. 
-* The number of operational tracking units is steadily declining. Sampling in some locations for at least one boat type is already nil. At the current rate, the ability to generate activity estimates at the national level might be severely compromised in 1 to 2 years time. 
-* There are large gaps in data availability in tracking data. The origin of this gaps is unknown and calls to question the reliability of the service.
-* Significant number of boat trackers stop being operational simultaneously particularly at the beginning of the first quarter 2019 and the beginning of the second quarter 2020. The reason for this decline is currently unknown. 
+* The number of operational tracking units is steadily declining. Sampling in some locations for at least one boat type is already nil. At the current rate, without new trackers added, the ability to generate activity estimates at the national level might be severely compromised in 1 to 3 years time. 
+* There are large gaps in data availability in tracking data. The origin of this gaps is unknown and until we know more about it, it may call to question the reliability of the service.
+* Significant number of boat trackers stopped being operational (last heard off) simultaneously. These events are prominent at the beginning of the first quarter 2019 and the beginning of the second quarter 2020. The reason for this decline is currently unknown and warrants further investigation of the failure rate of tracking devices. 
+* New devices should be deployed aiming to improve covering of under-sampled municipalities and boat types. 
+* The tracking data highlights some potential inaccuracies with the fisher/boat counts per municipality. In one of the locations the number of tracking devices installed is larger than the recorded number of boats. 
+* Substantial improvements in the PDS detection algorithm or sufficient post-processing methods are needed before it can be used ready for fisher-level analytics. 
+* Generating confidence intervals will be crucial to better understand the accuracy of the estimates.
 
-
+## Plots
 
 ```{r operation-per-boat, fig.height=10}
 drake::loadd(vessel_activity_bernoulli)
@@ -99,107 +105,74 @@ count_plot <- boats_location_data %>%
 cowplot::plot_grid(count_plot, proportion_plot, ncol = 2)
 
 ```
-We compare models in the Bernoulli formulation because it offers more flexibility. 
-As this option (as opposed to a Binomial formulation) allow us to explicitly set day covariates in case it's needed. 
 
-First we determine the time binning that's most appropriate for the data. 
+```{r model-predictions}
+drake::loadd(vessel_activity_model)
 
-```{r eval = F}
+extract_weekly_data <- function(x){
+  nd <- x@frame %>%
+    distinct(municipality_name, period_static) %>%
+    mutate(data_available = TRUE) %>%
+    complete(municipality_name, period_static = full_seq(period_static, period = 7), 
+             fill = list(data_available = FALSE)) %>%
+    mutate(period_seasonal = lubridate::week(period_static))
+}
 
+predict_weekly_vac <- function(x, nd, out = "numeric"){
+  
+  y = predict(x, newdata = nd,
+          re.form = ~ (1 | municipality_name) + (1 | period_static) +
+            (1 | municipality_name : period_static) + (1 | period_seasonal),
+          allow.new.levels = T)
+  
+  if (out == "numeric") {
+    return(y)
+  }
+  
+  nd %>%
+    mutate(estimate = y)
+}
 
+vac_predic_data <- vessel_activity_model %>%
+  map(extract_weekly_data) 
 
-
-datasets <- list(
- weekly = get_bernoulli_data("week", lubridate::week), 
- monthly = get_bernoulli_data("month", lubridate::month),
- quarterly = get_bernoulli_data("quarterly", lubridate::quarter)
-)
-
-boat_type <- list(canoe = 1, 
-                  powerboat = 2)
-
-models <- cross2(datasets, boat_type) %>%
-  map(~ filter(.[[1]], boat_code == .[[2]])) %>%
-  map(~ glmer(trip_activity ~  
-                (1 | municipality_name) +
-                (1 | wday) + 
-                (1 | period_static) +
-                (1 | municipality_name : period_static) +
-                (1 | period_seasonal) +
-                (1 | individual_boat), 
-              data = ., 
-              family = "binomial"))
-
-AIC(models[[1]], models[[2]], models[[3]])
-AIC(models[[4]], models[[5]], models[[6]])
-
-summary(models[[1]])
-summary(models[[4]])
-```
-
-Looks like weekly is better...
-
-Second we look at whether week day is worth keeping as the standard deviation of this random effect is relatively small. 
-
-```{r, eval = F}
-
-models_no_wday <- cross2(datasets[1], boat_type) %>%
-  map(~ filter(.[[1]], boat_code == .[[2]])) %>%
-  map(~ glmer(trip_activity ~  
-                (1 | municipality_name) +
-                (1 | period_static) +
-                (1 | municipality_name : period_static) +
-                (1 | period_seasonal) +
-                (1 | individual_boat), 
-              data = ., 
-              family = "binomial"))
-
-AIC(models[[1]], models_no_wday[[1]])
-AIC(models[[4]], models_no_wday[[2]])
-
-```
-
-Does seem to be useful
-
-
-```{r, eval = F}
-cross2(datasets[1], boat_type) %>%
-  map(~ filter(.[[1]], boat_code == .[[2]])) %>%
-  map(~ select(., boat_code, municipality_name, period_static, period_seasonal) %>% distinct()) %>%
-  map2_dfr(models[c(1,4)], function(x,y) {
-    est <- predict(y,
-                   newdata = x,
-                   re.form = ~
-                     (1 | municipality_name) +
-                     (1 | period_static) +
-                     (1 | municipality_name : period_static) +
-                     (1 | period_seasonal),
-                   allow.new.levels = T)
-    x %>%
-      mutate(estimate = est)
-    }) %>%
-  complete(boat_code, municipality_name, period_static = full_seq(period_static, 7)) %>%
+map2_dfr(vessel_activity_model, vac_predic_data, predict_weekly_vac, out = "df", .id = "boat_type") %>%
   ggplot(aes(x = period_static, y = plogis(estimate))) +
-  geom_path(aes(colour = boat_code), na.rm = F) +
-  # scale_y_continuous(trans = scales::logit_trans()) +
-  facet_wrap(~ municipality_name)
+  geom_link2(aes(alpha = data_available, group = boat_type, 
+                 colour = boat_type)) +
+  scale_linetype_manual(values = c(2,1)) +
+  scale_alpha_manual(values = c(0.4, 1)) +
+  scale_colour_brewer(palette = "Set1", labels = c("Canoe", "Motor"), name = "Boat type") +
+  facet_wrap(~municipality_name) +
+  theme_minimal() +
+  labs(title = "Vessel activity coefficient in Timor", 
+       caption = "Ligter colour indicates that no sampling was performed during that period at that particular location")
+
+# predict_weekly <- function(x){
+#   predict_weekly_vac(x, extract_weekly_data(x))
+# }
+# 
+# system.time({
+#   a <- bootMer(vessel_activity_model[[1]],
+#              FUN = predict_weekly,
+#              seed = 123, nsim = 4, parallel = "multicore", ncpus = 4)
+# })
+# 
+# 
+# predict_data_temp <- vac_predic_data[[1]] %>%
+#   mutate(prediction = as.character(1:n()))
+#   
+# as_tibble(a) %>%
+#   mutate(sample = 1:n()) %>%
+#    pivot_longer(-sample, values_to = "estimate", names_to = "prediction") %>%
+#   right_join(predict_data_temp)%>%
+#   ggplot(aes(x = period_static, y = plogis(estimate))) +
+#   geom_link2(aes(alpha = data_available, group = sample)) +
+#   scale_linetype_manual(values = c(2,1)) +
+#   scale_alpha_manual(values = c(0.4, 1)) +
+#   scale_colour_brewer(palette = "Set1", labels = c("Canoe", "Motor"), name = "Boat type") +
+#   facet_wrap(~municipality_name) +
+#   theme_minimal()
+
 ```
 
-
-```{r, eval = F}
-datasets$weekly %>%
-  group_by(imei, boat_id_pds, boat_code, municipality_name) %>%
-  summarise(installation = min(trip_end_date_pds), 
-            last_heard = max(trip_end_date_pds), .groups = "drop") %>%
-  mutate(boat_id_pds = fct_reorder(boat_id_pds, installation, .fun = min, .desc = T),
-         municipality_name = fct_reorder(municipality_name, installation, .fun = min, .desc = F)) %>%
-  ggplot(aes(y = boat_id_pds, colour = boat_code)) +
-  geom_segment(aes(x = installation, xend = last_heard, yend = boat_id_pds)) +
-  facet_grid(municipality_name ~ ., scales = "free", space = "free")
-  
-  
-```
-
-
-
- 
