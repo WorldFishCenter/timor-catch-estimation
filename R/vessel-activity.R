@@ -30,8 +30,8 @@ format_vessel_activity <- function(trips_from_points, peskadat_boats, boats_pds,
              ((trip_end_date_pds > installation_date) &
                 (trip_end_date_pds - installation_date) ==
                 min(trip_end_date_pds - installation_date))) %>%
-    select(imei, boat_id_pds, boat_code, municipality_name, trip_start_date_pds, trip_end_date_pds,
-           trip_id_pds)
+    select(imei, boat_id_pds, boat_code, municipality_name, trip_start_date_pds,
+           trip_end_date_pds, trip_id_pds)
 
   # Complete data with absences if last_seen_info is not included, it uses from
   # first to last tracking
@@ -100,7 +100,8 @@ model_vessel_activity_binomial <- function(vessel_activity_bernoulli){
   })
 
   vessel_data_binomial <- vessel_activity_bernoulli %>%
-    group_by(period_static, individual_boat, boat_code, municipality_name, period_seasonal) %>%
+    group_by(period_static, individual_boat, boat_code, municipality_name,
+             period_seasonal) %>%
     summarise(n_days = n(), n_trips = sum(trip_activity), .groups = "drop") %>%
     filter(!is.na(municipality_name))
 
@@ -119,6 +120,43 @@ model_vessel_activity_binomial <- function(vessel_activity_bernoulli){
                   family = "binomial"))
 
 }
+
+
+model_vessel_activity_binomial_brms <- function(vessel_activity_bernoulli){
+
+  suppressPackageStartupMessages({
+    require(brms)
+    require(tidyverse)
+
+  })
+
+  vessel_data_binomial <- vessel_activity_bernoulli %>%
+    group_by(period_static, individual_boat, boat_code, municipality_name,
+             period_seasonal) %>%
+    summarise(n_days = n(), n_trips = sum(trip_activity), .groups = "drop") %>%
+    filter(!is.na(municipality_name)) %>%
+    mutate(period_static = as.character(period_static))
+
+  boat_type <- list(canoe = 1,
+                    motor = 2)
+
+  boat_type %>%
+    map(~ filter(vessel_data_binomial, boat_code == .)) %>%
+    map(~ brms::brm(n_trips | trials(n_days) ~
+                (1 | municipality_name) +
+                (1 | period_static) +
+                (1 | municipality_name : period_static) +
+                (1 | period_seasonal) +
+                (1 | individual_boat),
+              data = .,
+              cores = 4,
+              iter = 1250,
+              warmup = 1000,
+              family = binomial))
+
+}
+
+
 
 function(all_trips, peskadat_boats, boats, last_seen_info = TRUE){
 

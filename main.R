@@ -42,6 +42,7 @@ fit_models <- drake_plan(
                                                      period_static_unit = "quarter",
                                                      period_seasonal_function = lubridate::quarter),
   vessel_activity_model = model_vessel_activity_binomial(vessel_activity_bernoulli),
+  vessel_activity_model_brms = model_vessel_activity_binomial_brms(vessel_activity_bernoulli_m),
   vessel_activity_model_m = model_vessel_activity_binomial(vessel_activity_bernoulli_m),
   vessel_activity_model_q = model_vessel_activity_binomial(vessel_activity_bernoulli_q),
 )
@@ -57,5 +58,5 @@ full_plan <- rbind(
 # Execute plan ------------------------------------------------------------
 
 if (!is.null(full_plan)) {
-  make(full_plan)
+  make(full_plan, lock_envir = F)
 }
