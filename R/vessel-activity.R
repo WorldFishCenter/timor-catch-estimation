@@ -30,7 +30,7 @@ format_vessel_activity <- function(trips_from_points, peskadat_boats, boats_pds,
              ((trip_end_date_pds > installation_date) &
                 (trip_end_date_pds - installation_date) ==
                 min(trip_end_date_pds - installation_date))) %>%
-    select(imei, boat_id_pds, boat_code, municipality_name, trip_end_date_pds,
+    select(imei, boat_id_pds, boat_code, municipality_name, trip_start_date_pds, trip_end_date_pds,
            trip_id_pds)
 
   # Complete data with absences if last_seen_info is not included, it uses from

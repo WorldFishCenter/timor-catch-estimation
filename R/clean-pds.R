@@ -1,6 +1,7 @@
 clean_trips_from_points <- function(path){
   readr::read_csv(path) %>%
     dplyr::mutate(trip_end_date_pds = lubridate::as_date(end, tz = "Asia/Dili"),
+                  trip_start_date_pds = lubridate::as_date(start, tz = "Asia/Dili"),
                   dplyr::across(c(imei, boat_id, trip), as.character)) %>%
     dplyr::rename(download_date_pds = day, trip_id_pds = trip,
                   boat_id_pds = boat_id) %>%
