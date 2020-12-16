@@ -11,9 +11,8 @@ coefficient modelling.
     device operation that could affect the activity estimates. Until
     these issues are resolved, activity estimates should be seen as
     provisional.
-  - Sampling is currently insufficient to reliable report activity
-    estimates at the municipality level, but is to-date enough to paint
-    a picture at the national level with certain confidence.
+  - In most locations, activity of motor boats appears to be higher than
+    Canoe boats.
   - Canoe boats are under-represented from tracking. About 40% of
     trackers devices have been installed in canoes, but they constitute
     about 70% of the fishing fleet. The disparity is larger in some
@@ -41,8 +40,6 @@ coefficient modelling.
   - Substantial improvements in the PDS detection algorithm or
     sufficient post-processing methods are needed before it can be used
     ready for fisher-level analytics.
-  - Generating confidence intervals will be crucial to better understand
-    the accuracy of the estimates.
 
 ## Plots
 
@@ -58,7 +55,7 @@ vessel_activity_bernoulli %>%
   ggplot(aes(y = boat_id_pds, colour = boat_code)) +
   geom_segment(aes(x = installation, xend = last_heard, yend = boat_id_pds)) +
   facet_grid(municipality_name ~ ., scales = "free", space = "free", margins = F) +
-  scale_color_brewer(palette = "Pastel1", labels = c("Canoe", "Motor"), name = "Boat type") +
+  scale_color_brewer(palette = "Set1", labels = c("Canoe", "Motor"), name = "Boat type") +
   theme_minimal() +
   theme(axis.text.y = element_blank(), 
         panel.grid.major.y = element_blank(), 
@@ -81,7 +78,7 @@ vessel_activity_bernoulli %>%
   ggplot(aes(x = period_static, y = n_boats, fill = boat_code)) +
   geom_col() +
   theme_minimal() +
-  scale_fill_brewer(palette = "Pastel1", labels = c("Canoe", "Motor"), name = "Boat type") +
+  scale_fill_brewer(palette = "Set1", labels = c("Canoe", "Motor"), name = "Boat type") +
   labs(title = "Number of boats tracked")
 ```
 
@@ -109,7 +106,7 @@ proportion_plot <- boats_location_data %>%
   geom_step() +
   scale_y_continuous(labels = scales::percent) +
   facet_wrap("municipality_name", ncol = 1, scales = "free") +
-  scale_colour_brewer(palette = "Pastel1", labels = c("Canoe", "Motor"), name = "Boat type") +
+  scale_colour_brewer(palette = "Set1", labels = c("Canoe", "Motor"), name = "Boat type") +
   theme_minimal() +
   theme(legend.position = "bottom") +
   labs(title = "Proportion of boats tracked")
@@ -118,7 +115,7 @@ count_plot <- boats_location_data %>%
   ggplot(aes(x = period_static, y = n_boats, fill = boat_code)) +
   geom_col() +
   facet_wrap("municipality_name", ncol = 1, scales = "free") +
-  scale_fill_brewer(palette = "Pastel1", labels = c("Canoe", "Motor"), name = "Boat type") +
+  scale_fill_brewer(palette = "Set1", labels = c("Canoe", "Motor"), name = "Boat type") +
   theme_minimal() +
   theme(legend.position = "bottom") +
   labs(title = "Number of boats tracked")
@@ -129,74 +126,130 @@ cowplot::plot_grid(count_plot, proportion_plot, ncol = 2)
 ![](vessel-activity_files/figure-gfm/operation-per-location%20-1.png)<!-- -->
 
 ``` r
-drake::loadd(vessel_activity_model)
+drake::loadd(vessel_activity_model_brms)
 
-extract_weekly_data <- function(x){
-  nd <- x@frame %>%
-    distinct(municipality_name, period_static) %>%
-    mutate(data_available = TRUE) %>%
-    complete(municipality_name, period_static = full_seq(period_static, period = 7), 
+monthly_predictions_overall <- function(x, y){
+  nd <- x$data %>%
+    distinct(period_static) %>%
+    mutate(data_available = TRUE, 
+           period_static = lubridate::as_date(period_static)) %>%
+    complete(period_static = seq(min(period_static), 
+                                                    max(period_static), "month"), 
              fill = list(data_available = FALSE)) %>%
-    mutate(period_seasonal = lubridate::week(period_static))
+    mutate(period_seasonal = lubridate::month(period_static), 
+           n_days = lubridate::days_in_month(period_seasonal),
+           boat_code = y,
+           prediction_id = as.character(1:n())) 
+  
+  x %>%
+    posterior_epred(nd, 
+                    re_formula = ~ (1 | period_static) +
+                      (1 | period_seasonal), 
+                    allow_new_levels = TRUE) %>% 
+    set_colnames(as.character(nd$prediction_id)) %>%
+    as.data.frame.table() %>%
+    dplyr::mutate(prediction_id = Var2) %>%
+    dplyr::rename(Estimate = Freq, sample = Var1) %>%
+    dplyr::inner_join(nd, by = "prediction_id") %>%
+    tibble::as_tibble() %>%
+    dplyr::select(-Var2)
 }
 
-predict_weekly_vac <- function(x, nd, out = "numeric"){
-  
-  y = predict(x, newdata = nd,
-          re.form = ~ (1 | municipality_name) + (1 | period_static) +
-            (1 | municipality_name : period_static) + (1 | period_seasonal),
-          allow.new.levels = T)
-  
-  if (out == "numeric") {
-    return(y)
-  }
-  
-  nd %>%
-    mutate(estimate = y)
-}
-
-vac_predic_data <- vessel_activity_model %>%
-  map(extract_weekly_data) 
-
-map2_dfr(vessel_activity_model, vac_predic_data, predict_weekly_vac, out = "df", .id = "boat_type") %>%
-  ggplot(aes(x = period_static, y = plogis(estimate))) +
-  geom_link2(aes(alpha = data_available, group = boat_type, 
-                 colour = boat_type)) +
-  scale_linetype_manual(values = c(2,1)) +
-  scale_alpha_manual(values = c(0.4, 1)) +
-  scale_colour_brewer(palette = "Set1", labels = c("Canoe", "Motor"), name = "Boat type") +
-  facet_wrap(~municipality_name) +
+imap_dfr(vessel_activity_model_brms, monthly_predictions_overall) %>%
+  ggplot(aes(x = period_static, y = Estimate, fill = boat_code, colour = boat_code)) + 
+  stat_lineribbon(aes(alpha = forcats::fct_rev(ordered(stat(.width)))), 
+                  .width = c(0.05, 0.66, 0.95)) +
+  facet_grid(cols = vars(boat_code)) +
+  scale_fill_brewer(palette = "Set1", aesthetics = c("colour", "fill"), 
+                    name = "Boat type") +
+  scale_alpha_manual(values = c(0.05, 0.33, 0.95), name = "Credible interval") +
   theme_minimal() +
-  labs(title = "Vessel activity coefficient in Timor", 
-       caption = "Ligter colour indicates that no sampling was performed during that period at that particular location")
+  theme(legend.position = "bottom") +
+  labs(title = "Estimated average number of trips per month - Overall", 
+       caption = "Based on 1000 Markov Chain Monte Carlo simulations of the Dynamic Vessel Activity Coefficient")
 ```
 
-![](vessel-activity_files/figure-gfm/model-predictions-1.png)<!-- -->
+![](vessel-activity_files/figure-gfm/model-predictions-overall-1.png)<!-- -->
 
 ``` r
-# predict_weekly <- function(x){
-#   predict_weekly_vac(x, extract_weekly_data(x))
-# }
-# 
-# system.time({
-#   a <- bootMer(vessel_activity_model[[1]],
-#              FUN = predict_weekly,
-#              seed = 123, nsim = 4, parallel = "multicore", ncpus = 4)
-# })
-# 
-# 
-# predict_data_temp <- vac_predic_data[[1]] %>%
-#   mutate(prediction = as.character(1:n()))
-#   
-# as_tibble(a) %>%
-#   mutate(sample = 1:n()) %>%
-#    pivot_longer(-sample, values_to = "estimate", names_to = "prediction") %>%
-#   right_join(predict_data_temp)%>%
-#   ggplot(aes(x = period_static, y = plogis(estimate))) +
-#   geom_link2(aes(alpha = data_available, group = sample)) +
-#   scale_linetype_manual(values = c(2,1)) +
-#   scale_alpha_manual(values = c(0.4, 1)) +
-#   scale_colour_brewer(palette = "Set1", labels = c("Canoe", "Motor"), name = "Boat type") +
-#   facet_wrap(~municipality_name) +
-#   theme_minimal()
+monthly_predictions_site <- function(x, y){
+  nd <- x$data %>%
+    distinct(municipality_name, period_static) %>%
+    mutate(data_available = TRUE, 
+           period_static = lubridate::as_date(period_static)) %>%
+    complete(municipality_name, period_static = seq(min(period_static), 
+                                                    max(period_static), "month"), 
+             fill = list(data_available = FALSE)) %>%
+    mutate(period_seasonal = lubridate::month(period_static), 
+           n_days = lubridate::days_in_month(period_seasonal),
+           boat_code = y,
+           prediction_id = as.character(1:n())) 
+  
+  x %>%
+    posterior_epred(nd, 
+                    re_formula = ~ (1 | municipality_name) + (1 | period_static) +
+                      (1 | municipality_name : period_static) + 
+                      (1 | period_seasonal), 
+                    allow_new_levels = TRUE) %>% 
+    set_colnames(as.character(nd$prediction_id)) %>%
+    as.data.frame.table() %>%
+    dplyr::mutate(prediction_id = Var2) %>%
+    dplyr::rename(Estimate = Freq, sample = Var1) %>%
+    dplyr::inner_join(nd, by = "prediction_id") %>%
+    tibble::as_tibble() %>%
+    dplyr::select(-Var2)
+}
+
+imap_dfr(vessel_activity_model_brms, monthly_predictions_site) %>%
+  ggplot(aes(x = period_static, y = Estimate, fill = boat_code, colour = boat_code)) + 
+  stat_lineribbon(aes(alpha = forcats::fct_rev(ordered(stat(.width)))), 
+                  .width = c(0.05, 0.66, 0.95)) +
+  facet_wrap(vars(municipality_name), ncol = 3) +
+  scale_fill_brewer(palette = "Set1", aesthetics = c("colour", "fill"), 
+                    name = "Boat type") +
+  scale_alpha_manual(values = c(0.05, 0.33, 0.95), name = "Credible interval") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(title = "Estimated average number of trips per month - Per site", 
+       caption = "Based on 1000 Markov Chain Monte Carlo simulations")
 ```
+
+![](vessel-activity_files/figure-gfm/model-predictions-persite-1.png)<!-- -->
+
+``` r
+predictions_site <- function(x, y){
+  nd <- x$data %>%
+    distinct(municipality_name) %>%
+    mutate(data_available = TRUE) %>%
+    complete(municipality_name) %>%
+    mutate(n_days = 30,
+           boat_code = y,
+           prediction_id = as.character(1:n())) 
+  
+  x %>%
+    posterior_epred(nd, 
+                    re_formula = ~ (1 | municipality_name), 
+                    allow_new_levels = TRUE) %>% 
+    set_colnames(as.character(nd$prediction_id)) %>%
+    as.data.frame.table() %>%
+    dplyr::mutate(prediction_id = Var2) %>%
+    dplyr::rename(Estimate = Freq, sample = Var1) %>%
+    dplyr::inner_join(nd, by = "prediction_id") %>%
+    tibble::as_tibble() %>%
+    dplyr::select(-Var2)
+}
+
+imap_dfr(vessel_activity_model_brms, predictions_site) %>%
+  mutate(municipality_name = fct_reorder(municipality_name, Estimate)) %>%
+  ggplot(aes(y = municipality_name, x = Estimate, fill = boat_code, colour = boat_code)) + 
+  stat_pointinterval(.width = c(0.66, 0.95), position = position_dodge(0.4)) +
+  scale_fill_brewer(palette = "Set1", aesthetics = c("colour", "fill"), 
+                    name = "Boat type") +
+  scale_alpha_manual(values = c(0.05, 0.33, 0.95), name = "Credible interval") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(title = "Estimated average number of trips per month - Per site", 
+       caption = "Based on 1000 Markov Chain Monte Carlo simulations")
+```
+
+![](vessel-activity_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
