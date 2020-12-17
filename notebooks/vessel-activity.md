@@ -23,20 +23,20 @@ coefficient modelling.
     generate activity estimates at the national level might be severely
     compromised in 1 to 3 years time.
   - There are large gaps in data availability in tracking data. The
-    origin of this gaps is unknown and until we know more about it, it
+    origin of these gaps is unknown and until we know more about it, it
     may call to question the reliability of the service.
-  - Significant number of boat trackers stopped being operational (last
-    heard off) simultaneously. These events are prominent at the
+  - A significant number of boat trackers stopped being operational (last
+    heard of) simultaneously. These events are prominent at the
     beginning of the first quarter 2019 and the beginning of the second
     quarter 2020. The reason for this decline is currently unknown and
     warrants further investigation of the failure rate of tracking
     devices.
-  - New devices should be deployed aiming to improve covering of
+  - New devices should be deployed aiming to improve coverage of
     under-sampled municipalities and boat types.
   - The tracking data highlights some potential inaccuracies with the
     fisher/boat counts per municipality. In one of the locations the
     number of tracking devices installed is larger than the recorded
-    number of boats.
+    number of boats. 
   - Substantial improvements in the PDS detection algorithm or
     sufficient post-processing methods are needed before it can be used
     ready for fisher-level analytics.
