@@ -31,7 +31,10 @@ format_vessel_activity <- function(trips_from_points, peskadat_boats, boats_pds,
                 (trip_end_date_pds - installation_date) ==
                 min(trip_end_date_pds - installation_date))) %>%
     select(imei, boat_id_pds, boat_code, municipality_name, trip_start_date_pds,
-           trip_end_date_pds, trip_id_pds)
+           trip_end_date_pds, trip_id_pds) %>%
+    # If there are multiple trips on a day just select one of them
+    group_by(imei, boat_id_pds, trip_end_date_pds) %>%
+    slice_head(n = 1)
 
   # Complete data with absences if last_seen_info is not included, it uses from
   # first to last tracking
@@ -127,6 +130,41 @@ model_vessel_activity_binomial_brms <- function(vessel_activity_bernoulli){
   suppressPackageStartupMessages({
     require(brms)
     require(tidyverse)
+  })
+
+  vessel_data_binomial <- vessel_activity_bernoulli %>%
+    group_by(period_static, individual_boat, boat_code, municipality_name,
+             period_seasonal) %>%
+    summarise(n_days = n(), n_trips = sum(trip_activity), .groups = "drop") %>%
+    filter(!is.na(municipality_name)) %>%
+    mutate(period_static = as.character(period_static))
+
+  boat_type <- list(canoe = 1,
+                    motor = 2)
+
+  boat_type %>%
+    map(~ filter(vessel_data_binomial, boat_code == .)) %>%
+    map(~ brms::brm(n_trips | trials(n_days) ~
+                      (1 | municipality_name) +
+                      (1 | period_static) +
+                      (1 | municipality_name : period_static) +
+                      (1 | period_seasonal) +
+                      (1 | individual_boat),
+                    data = .,
+                    cores = 4,
+                    iter = 1250,
+                    warmup = 1000,
+                    control = list(adapt_delta = 0.9,
+                                   max_treedepth = 12),
+                    family = zero_inflated_binomial))
+
+}
+
+model_vessel_activity_binomial_brms2 <- function(vessel_activity_bernoulli){
+
+  suppressPackageStartupMessages({
+    require(brms)
+    require(tidyverse)
 
   })
 
@@ -143,17 +181,61 @@ model_vessel_activity_binomial_brms <- function(vessel_activity_bernoulli){
   boat_type %>%
     map(~ filter(vessel_data_binomial, boat_code == .)) %>%
     map(~ brms::brm(n_trips | trials(n_days) ~
-                (1 | municipality_name) +
-                (1 | period_static) +
-                (1 | municipality_name : period_static) +
-                (1 | period_seasonal) +
-                (1 | individual_boat),
-              data = .,
-              cores = 4,
-              iter = 1250,
-              warmup = 1000,
-              family = binomial))
+                      (1 | municipality_name) +
+                      (1 | period_static) +
+                      (1 | municipality_name : period_static) +
+                      (1 | period_seasonal) +
+                      (1 | individual_boat),
+                    data = .,
+                    cores = 4,
+                    iter = 1250,
+                    warmup = 1000,
+                    family = binomial))
 
+}
+
+model_vessel_activity_binomial_brms3 <- function(vessel_activity_bernoulli){
+
+  suppressPackageStartupMessages({
+    require(brms)
+    require(tidyverse)
+
+  })
+
+  vessel_data_binomial <- vessel_activity_bernoulli %>%
+    group_by(period_static, individual_boat, boat_code, municipality_name,
+             period_seasonal) %>%
+    summarise(n_days = n(), n_trips = sum(trip_activity), .groups = "drop") %>%
+    filter(!is.na(municipality_name)) %>%
+    mutate(period_static = as.character(period_static))
+
+  d_multivariate <- vessel_data_binomial %>%
+    pivot_wider(id_cols = c(period_static, individual_boat, municipality_name, period_seasonal),
+                names_from = boat_code,
+                values_from = c(n_days, n_trips))
+
+  canoe_formula <- bf(n_trips_1 | trials(n_days_1) ~
+                        (1 | a | municipality_name) +
+                        (1 | b | period_static) +
+                        (1 | c | municipality_name : period_static) +
+                        (1 | d | period_seasonal) +
+                        (1 | individual_boat))
+
+  motor_formula <- bf(n_trips_2 | trials(n_days_2) ~
+                        (1 | a | municipality_name) +
+                        (1 | b | period_static) +
+                        (1 | c | municipality_name : period_static) +
+                        (1 | d | period_seasonal) +
+                        (1 | individual_boat))
+
+  brm(formula = mvbf(canoe_formula, motor_formula),
+      data = d_multivariate,
+      cores = 4,
+      iter = 1250,
+      warmup = 1000,
+      control = list(adapt_delta = 0.9,
+                                   max_treedepth = 12),
+      family = zero_inflated_binomial)
 }
 
 

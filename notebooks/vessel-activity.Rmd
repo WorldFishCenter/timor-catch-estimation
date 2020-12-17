@@ -142,7 +142,7 @@ monthly_predictions_overall <- function(x, y){
 imap_dfr(vessel_activity_model_brms, monthly_predictions_overall) %>%
   ggplot(aes(x = period_static, y = Estimate, fill = boat_code, colour = boat_code)) + 
   stat_lineribbon(aes(alpha = forcats::fct_rev(ordered(stat(.width)))), 
-                  .width = c(0.05, 0.66, 0.95)) +
+                  .width = c(0.05, 0.66, 0.95), size = 0.5) +
   facet_grid(cols = vars(boat_code)) +
   scale_fill_brewer(palette = "Set1", aesthetics = c("colour", "fill"), 
                     name = "Boat type") +
@@ -186,7 +186,7 @@ monthly_predictions_site <- function(x, y){
 imap_dfr(vessel_activity_model_brms, monthly_predictions_site) %>%
   ggplot(aes(x = period_static, y = Estimate, fill = boat_code, colour = boat_code)) + 
   stat_lineribbon(aes(alpha = forcats::fct_rev(ordered(stat(.width)))), 
-                  .width = c(0.05, 0.66, 0.95)) +
+                  .width = c(0.05, 0.66, 0.95), size = 0.5) +
   facet_wrap(vars(municipality_name), ncol = 3) +
   scale_fill_brewer(palette = "Set1", aesthetics = c("colour", "fill"), 
                     name = "Boat type") +
