@@ -21,25 +21,25 @@ coefficient modelling.
     Sampling in some locations for at least one boat type is already
     nil. At the current rate, without new trackers added, the ability to
     generate activity estimates at the national level might be severely
-    compromised in 1 to 3 years time.
+    compromised in 1 to 3 years time. 
   - There are large gaps in data availability in tracking data. The
     origin of these gaps is unknown and until we know more about it, it
-    may call to question the reliability of the service.
+    may call to question the reliability of the service. 
   - A significant number of boat trackers stopped being operational (last
     heard of) simultaneously. These events are prominent at the
     beginning of the first quarter 2019 and the beginning of the second
     quarter 2020. The reason for this decline is currently unknown and
     warrants further investigation of the failure rate of tracking
-    devices.
+    devices. #did you ask PDS about this when you contacted them? I dont remember seeing it
   - New devices should be deployed aiming to improve coverage of
-    under-sampled municipalities and boat types.
+    under-sampled municipalities and boat types. #great yes - we tried to do this with Joctan previously in a non-quantitative way, but having this specific guidance would be very useful to guide further installations
   - The tracking data highlights some potential inaccuracies with the
     fisher/boat counts per municipality. In one of the locations the
     number of tracking devices installed is larger than the recorded
-    number of boats. 
+    number of boats. #haha brilliant. I never noticed this.
   - Substantial improvements in the PDS detection algorithm or
     sufficient post-processing methods are needed before it can be used
-    ready for fisher-level analytics.
+    ready for fisher-level analytics. #do you think these are things that we should be working on, or do you think we could provide them with some of these tasks for the Inspire challenge work?
 
 ## Plots
 
