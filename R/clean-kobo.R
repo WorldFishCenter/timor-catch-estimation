@@ -18,6 +18,15 @@ read_kobo_survey_2 <- function(path){
     dplyr::ungroup()
 }
 
+# Ignore NAs when adding numbers except if everythinh is an NA
+na_mindful_sum <- function(x){
+  if (all(is.na(x))) {
+    NA_real_
+  } else {
+    sum(x, na.rm = TRUE)
+  }
+}
+
 # Takes the survey and cleans the catch. Calculates the weight and highlights if
 # there are any issues there. One row per species caught in each trip
 clean_catch_kobo2 <- function(kobo_survey_2, peskadat_species){
@@ -28,14 +37,7 @@ clean_catch_kobo2 <- function(kobo_survey_2, peskadat_species){
     require(purrr)
   })
 
-  # Ignore NAs when adding numbers except if everythinh is an NA
-  na_mindful_sum <- function(x){
-    if (all(is.na(x))) {
-      NA_real_
-    } else {
-      sum(x, na.rm = TRUE)
-    }
-  }
+  species_data_long <- kobo_survey_2 %>%
 
   clean_lengths <- kobo_survey_2 %>%
     select(starts_with("species_group"), uuid) %>%
