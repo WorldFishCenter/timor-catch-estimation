@@ -284,21 +284,40 @@ clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, peskadat_boats){
            trip_landing_site = trip_landing_site_r) %>%
     select(-record_device_id_r, -record_id_r, -trip_happiness_r, -boat_type_r,
            -trip_gear_r, -trip_habitat_r, -trip_landing_site_r) %>%
-    # CATCH
+    # join catch
     left_join(trip_catch_2, by = "record_id") %>%
     # CLEAN VALUES (left for after because it's good to know the catch too)
     mutate(trip_value_w = as.numeric(trip_value_r),
-           trip_value = case_when(trip_value_w > 20000 ~ NA_real_,
-                                  trip_value_w == 0 ~ NA_real_,
+           # If trip value was not recorded but the catch and n. species is zero
+           # it can be assumed it was zero too
+           trip_value = case_when(is.na(trip_value_w) & trip_catch == 0 &
+                                    trip_n_species == 0 ~ 0,
+                                  # if it's too large it's likely wrong
+                                  trip_value_w > 20000 ~ NA_real_,
+                                  # If value is zero but catch is not zero it
+                                  # probably means that it wasn't sold. We make
+                                  # it NA to avoid
+                                  trip_value_w == 0 & (trip_catch != 0 |
+                                                         trip_n_species != 0) ~
+                                    NA_real_,
                                   TRUE ~ trip_value_w),
-           trip_value_flag = case_when(trip_value_w > 20000 ~
+           trip_value_flag = case_when(is.na(trip_value_w) &
+                                         (trip_catch != 0 | trip_n_species != 0) ~
+                                         "trip_value_not_recorded",
+                                       trip_value_w > 20000 ~
                                          "trip_value__too_large",
                                        trip_value_w == 0 &
                                          !is.na(trip_platform) &
-                                         trip_catch != 0 ~
+                                         trip_catch != 0 & trip_catch_use != "food" ~
                                          "trip_value__is_zero",
                                        TRUE ~ NA_character_)) %>%
-    select(-trip_value_w, -trip_value_r) %>%
+    # select(-trip_value_w, -trip_value_r) %>%
+    # CATCH CLEANING
+    mutate(trip_catch = case_when(is.na(trip_catch) & trip_value == 0 ~ 0,
+                                  TRUE ~ trip_catch),
+           trip_catch_flag = case_when(is.na(trip_catch) & trip_value == 0 ~
+                                         "trip_catch__not_properly_recorded",
+                                       TRUE ~ NA_character_)) %>%
     # FLAGS
     rowwise() %>%
     mutate(flags = paste(na.omit(c(boat_imei_flag,
@@ -308,6 +327,7 @@ clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, peskadat_boats){
                                    trip_value_flag,
                                    gear_mesh_size_flag,
                                    species_flag,
+                                   trip_catch_flag,
                                    fisher_number_flag)), collapse = ";")) %>%
     ungroup() %>%
     select(-ends_with("_flag")) %>%
