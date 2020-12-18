@@ -96,6 +96,10 @@ clean_catch_kobo2 <- function(kobo_survey_2, peskadat_species){
                                  TRUE ~ NA_character_)) %>%
     # Get weight
     mutate(mean_weight = (a * mean_length ^ b)/1000,
+           mean_weight = case_when(species_code == "45" ~ 0.05, # crab
+                                   species_code == "24" ~ 1, # octopus
+                                   species_code == "50" ~ 0.006, #cockle
+                                   TRUE ~ mean_weight),
            weight = mean_weight * n_individuals) %>%
     group_by(record_id, species_code, use) %>%
     summarise(mean_length = weighted.mean(x = mean_length,
