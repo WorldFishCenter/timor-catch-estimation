@@ -117,7 +117,7 @@ clean_catch_kobo2 <- function(kobo_survey_2, peskadat_species){
 }
 
 # Takes the survey and cleans the hell out of it. One row per trip
-clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, boats){
+clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, peskadat_boats){
 
   suppressPackageStartupMessages({
     require(dplyr)
@@ -140,7 +140,7 @@ clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, boats){
     mutate(species_flag = if_else(species_flag == "", NA_character_,
                                   species_flag))
 
-  imei_list <- boats %>%
+  imei_list <- peskadat_boats %>%
     select(imei_long) %>%
     # Some IMEIs are repeated
     distinct()
