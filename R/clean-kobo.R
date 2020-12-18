@@ -133,11 +133,13 @@ clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, peskadat_boats){
                                        first(use), "both"),
               trip_n_species = n_distinct(species_code[species_code != "0"],
                                           na.rm = TRUE),
-              trip_catch = sum(weight, na.rm = T),
+              trip_catch = na_mindful_sum(weight),
               species_flag = paste(unique(na.omit(c(species_flags))),
                                    collapse = ";"),
               .groups = "drop") %>%
-    mutate(species_flag = if_else(species_flag == "", NA_character_,
+    mutate(trip_catch = case_when(is.na(trip_catch) & trip_n_species == 0 ~ 0,
+                                  TRUE ~ trip_catch),
+           species_flag = if_else(species_flag == "", NA_character_,
                                   species_flag))
 
   imei_list <- peskadat_boats %>%
