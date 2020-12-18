@@ -38,15 +38,15 @@ clean_catch_kobo2 <- function(kobo_survey_2, peskadat_species){
   })
 
   species_data_long <- kobo_survey_2 %>%
-
-  clean_lengths <- kobo_survey_2 %>%
     select(starts_with("species_group"), uuid) %>%
     select(-ends_with("species_name"), -ends_with("photo")) %>%
     mutate(record_id = uuid) %>%
     select(-uuid) %>%
     pivot_longer(!record_id, names_to = c("record", "question"),
-                 names_pattern = "species_group_(.)_species_group_(.*)") %>%
-    # Make sure all have the same questions
+                 names_pattern = "species_group_(.)_species_group_(.*)")
+
+  # Make sure all have the same questions
+  clean_lengths <- species_data_long %>%
     complete(record_id, record, question) %>%
     group_by(record_id, record) %>%
     filter(!all(is.na(value))) %>%
