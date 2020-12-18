@@ -78,6 +78,9 @@ clean_catch_kobo2 <- function(kobo_survey_2, peskadat_species){
                                           na_mindful_sum(n_individuals) == 0 &
                                             first(species_code) != "0" ~
                                             "species_number__zero",
+                                          is.na(na_mindful_sum(n_individuals)) &
+                                            first(species_code) != "0" ~
+                                            "species_number__not_recorded",
                                           TRUE ~NA_character_),
            n_individuals = case_when(n_individuals > exp(10) ~ NA_real_,
                                      n_individuals < 0 ~ n_individuals * (-1),
