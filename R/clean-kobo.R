@@ -313,7 +313,7 @@ clean_trips_kobo2 <- function(kobo_survey_2, kobo_catch_2, peskadat_boats){
                                          trip_catch != 0 & trip_catch_use != "food" ~
                                          "trip_value__is_zero",
                                        TRUE ~ NA_character_)) %>%
-    # select(-trip_value_w, -trip_value_r) %>%
+    select(-trip_value_w, -trip_value_r) %>%
     # CATCH CLEANING
     mutate(trip_catch = case_when(is.na(trip_catch) & trip_value == 0 ~ 0,
                                   TRUE ~ trip_catch),
