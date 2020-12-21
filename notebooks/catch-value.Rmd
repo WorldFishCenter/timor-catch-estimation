@@ -1,0 +1,50 @@
+---
+title: "Catch - value"
+output: github_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 10, fig.height = 7, warning = F)
+library(ggplot2)
+library(ggforce)
+library(magrittr)
+library(tidyverse)
+library(brms)
+library(ggdist)
+```
+
+### Summary
+
+* Three species are sufficient to model the prices per species in ~98% of the trips
+
+### Plots
+
+Before trying to calculate value for the fisheries we need to better understand the accuracy of pricing data. 
+
+First we estimate price of different species as this will allow us to detect which value/catch combinations might be out of whack and shouldn't be included in the total fisheries estimations. 
+
+One problem is that we have only value data for the whole trip, not per species, and many trips catch more than one species. We solve that using a multi-membership random effect model and using the catch weights of each species as weights. 
+
+We need to determine how many species are required to characterise a trip
+
+```{r species-per-trip, fig.height =  5}
+drake::loadd(kobo_trips)
+
+kobo_trips %>%
+  count(trip_n_species) %>%
+    filter(trip_n_species %in% 1:8) %>%
+  janitor::adorn_percentages(denominator = "col") %>%
+  mutate(n_cum = cumsum(n)) %>%
+  ggplot(aes(x = trip_n_species, y = n)) +
+  # geom_col(colour = "grey30", alpha = 0.3) +
+  geom_area(aes(y = n_cum), colour = "grey30", alpha = 0.25) +
+  geom_point(aes(y = n_cum)) +
+  scale_y_continuous(labels = scales::label_percent()) +
+  theme_minimal() +
+  labs(x = "Number of species", 
+       y = "Percentage of trips", 
+       title = "Cummulative percentage of trips", 
+       subtitle = "Abour 98% of trips catch 3 species or less")
+```
+
