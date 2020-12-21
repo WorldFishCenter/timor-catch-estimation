@@ -23,5 +23,6 @@ clean_peskadat_municipalities <- function(path){
   path %>%
     readr::read_csv() %>%
     janitor::clean_names() %>%
-    dplyr::filter(!is.na(municipality_code))
+    dplyr::filter(!is.na(municipality_code)) %>%
+    dplyr::mutate(municipality_code = as.character(municipality_code))
 }
