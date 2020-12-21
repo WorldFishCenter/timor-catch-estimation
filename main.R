@@ -22,6 +22,9 @@ read_data <- drake_plan(
 pre_process_data <- drake_plan(
   kobo_catch_2 = clean_catch_kobo2(kobo_survey_2, peskadat_species),
   kobo_trips_2 = clean_trips_kobo2(kobo_survey_2, kobo_catch_2, peskadat_boats),
+  kobo_catch = kobo_catch_2,
+  kobo_trips = kobo_trips_2,
+  kobo_trip_catch_wide = widen_trip_catch(kobo_trips, kobo_catch, n_top_species = 2),
   all_trips = merge_trips(kobo_trips_2, trips_from_points),
 )
 
@@ -47,13 +50,17 @@ fit_models <- drake_plan(
   # vessel_activity_model_brms3 = model_vessel_activity_binomial_brms3(vessel_activity_bernoulli_m),
   vessel_activity_model_m = model_vessel_activity_binomial(vessel_activity_bernoulli_m),
   vessel_activity_model_q = model_vessel_activity_binomial(vessel_activity_bernoulli_q),
+  species_price_model = target(command = model_species_price(kobo_trip_catch_wide,
+                                                             peskadat_municipalities),
+                               trigger = trigger(depend = T))
 )
 
 notebooks <- drake_plan(
-  vessel_activity_nb = target(rmarkdown::render(knitr_in("notebooks/vessel-activity.Rmd")))
+  vessel_activity_nb = target(rmarkdown::render(knitr_in("notebooks/vessel-activity.Rmd"))),
+  catch_value_nb = target(rmarkdown::render(knitr_in("notebooks/catch-value.Rmd"))),
 )
 
-full_plan <- rbind(
+full_plan <- bind_plans(
   read_data, pre_process_data, fit_models, notebooks
 )
 
