@@ -30,7 +30,7 @@ widen_trip_catch <- function(kobo_trips,
 
 
 model_species_price <- function(kobo_trip_catch_wide,
-                                peskadat_municipalities,
+                                peskadat_stations,
                                 period_static_unit = "month",
                                 period_seasonal_function = lubridate::month){
 
@@ -39,8 +39,10 @@ model_species_price <- function(kobo_trip_catch_wide,
   })
 
   model_data <- kobo_trip_catch_wide %>%
-    dplyr::filter(is.finite(trip_price)) %>%
-    dplyr::left_join(peskadat_municipalities, by = c("trip_landing_site" = "municipality_code")) %>%
+    dplyr::filter(is.finite(trip_price),
+                  !is.na(trip_price),
+                  trip_platform == "boat") %>%
+    dplyr::left_join(peskadat_stations, by = c("trip_landing_site" = "station_code")) %>%
     dplyr::mutate(period_static = lubridate::floor_date(trip_date,
                                                         unit = period_static_unit),
                   period_static = as.character(period_static),
@@ -48,29 +50,77 @@ model_species_price <- function(kobo_trip_catch_wide,
                   period_seasonal = as.character(period_seasonal),
                   wday = lubridate::wday(trip_date, label = T))
 
-  brm(trip_price ~  (1 | municipality_name) +
-        (1 | period_static) +
-        (1 | period_seasonal) +
-        (1 | mm(species_code_1,
-                species_code_2,
-                species_code_other,
-                weights = cbind(weight_1,
-                                weight_2,
-                                weight_other))),
-      data = model_data,
-      family = student(link = "log"),
-      control = list(max_treedepth = 12),
-      cores = 4,
-      iter = 1250,
-      warmup = 1000)
+  brm(trip_price ~
+              (1 | mm(species_code_1,
+                      species_code_2,
+                      species_code_other,
+                      weights = cbind(weight_1,
+                                      weight_2,
+                                      weight_other))),
+            data = model_data,
+            family = student(link = "log"),
+            control = list(max_treedepth = 12),
+            cores = 4,
+            iter = 2000,
+            warmup = 1000)
 
 }
 
+add_price_flags <- function(kobo_trip_catch_wide, species_price_model){
+
+  suppressPackageStartupMessages({
+    library(dplyr)
+  })
+
+  pred_data <- kobo_trip_catch_wide %>%
+    filter(is.finite(trip_price),
+           !is.na(trip_price)) %>%
+    arrange(desc(trip_price))
+
+  residuals(species_price_model,
+            pred_data[1:10, ],
+            allow_new_levels = T,
+            scale = "response")
+
+  predicted_prices <- fitted(species_price_model,
+                             pred_data,
+                             allow_new_levels = T,
+                             scale = "response")
+
+  residual_factor <- predicted_prices %>%
+    as_tibble() %>%
+    bind_cols(pred_data) %>%
+    mutate(trip_price_residual_factor = pmin(abs(log(trip_price/Q2.5)),
+                                             abs(log(trip_price/Q97.5))),
+           trip_price_residual_factor2 = trip_price_residual_factor *
+             sign(-abs(log(trip_price/Q97.5))+abs(log(trip_price/Q2.5))),
+           trip_price_residual_factor = exp(trip_price_residual_factor2)) %>%
+    select(record_id, trip_price_residual_factor) %>%
+    mutate(price_flag = case_when(trip_price_residual_factor > 5  ~
+                                    "trip_catch__price_per_kg_extremely_large",
+                                  trip_price_residual_factor < 1/5 ~
+                                    "trip_catch__price_per_kg_extremely_small",
+                                  trip_price_residual_factor > 3  ~
+                                    "trip_catch__price_per_kg_too_large",
+                                  trip_price_residual_factor < 1/3 ~
+                                    "trip_catch__price_per_kg_too_small",
+                                  TRUE ~ NA_character_))
+
+  kobo_trip_catch_wide %>%
+    left_join(residual_factor, by = "record_id") %>%
+    rowwise() %>%
+    mutate(flags = paste(na.omit(c(flags,
+                                   price_flag)), collapse = ";")) %>%
+    ungroup() %>%
+    select(-ends_with("_flag")) %>%
+    mutate(flags = if_else(flags == "", NA_character_, flags))
+}
 
 
 function(kobo_trips_2,
          kobo_catch_2,
          peskadat_municipalities,
+         kobo_trips_with_price_tags,
          period_static_unit = "month",
          period_seasonal_function = lubridate::month){
   kobo_trips <- kobo_trips_2

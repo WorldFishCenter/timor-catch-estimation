@@ -16,6 +16,7 @@ read_data <- drake_plan(
   peskadat_species = clean_peskasdat_species(file_in("data/raw/peskaDAT-species.csv")),
   peskadat_boats = clean_peskasdat_boats(file_in("data/raw/peskaDAT-boats.csv")),
   peskadat_municipalities = clean_peskadat_municipalities(file_in("data/raw/peskaDAT-municipalities.csv")),
+  peskadat_stations = clean_peskadat_stations(file_in("data/raw/peskaDAT-stations.csv")),
   kobo_survey_2 = read_kobo_survey_2(file_in("data/raw/catch_timor_structured.csv")),
 )
 
@@ -47,12 +48,15 @@ fit_models <- drake_plan(
   vessel_activity_model = model_vessel_activity_binomial(vessel_activity_bernoulli),
   vessel_activity_model_brms = model_vessel_activity_binomial_brms(vessel_activity_bernoulli_m),
   vessel_activity_model_brms2 = model_vessel_activity_binomial_brms2(vessel_activity_bernoulli_m),
-  # vessel_activity_model_brms3 = model_vessel_activity_binomial_brms3(vessel_activity_bernoulli_m),
   vessel_activity_model_m = model_vessel_activity_binomial(vessel_activity_bernoulli_m),
   vessel_activity_model_q = model_vessel_activity_binomial(vessel_activity_bernoulli_q),
   species_price_model = target(command = model_species_price(kobo_trip_catch_wide,
-                                                             peskadat_municipalities),
-                               trigger = trigger(depend = T))
+                                                             peskadat_stations,
+                                                             period_static_unit = "year"))
+)
+
+post_process_data <- drake_plan(
+  kobo_trips_with_price_tags = add_price_flags(kobo_trip_catch_wide, species_price_model),
 )
 
 notebooks <- drake_plan(
@@ -61,7 +65,7 @@ notebooks <- drake_plan(
 )
 
 full_plan <- bind_plans(
-  read_data, pre_process_data, fit_models, notebooks
+  read_data, pre_process_data, fit_models, post_process_data, notebooks
 )
 
 # Execute plan ------------------------------------------------------------
