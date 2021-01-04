@@ -116,6 +116,91 @@ add_price_flags <- function(kobo_trip_catch_wide, species_price_model){
     mutate(flags = if_else(flags == "", NA_character_, flags))
 }
 
+model_catch <- function(kobo_trips_with_price_tags,
+                        peskadat_stations,
+         period_static_unit = "month",
+         period_seasonal_function = lubridate::month){
+
+  suppressPackageStartupMessages({
+    library(tidyverse)
+    library(brms)
+  })
+
+  model_data <- kobo_trips_with_price_tags %>%
+    filter(!str_detect(flags, "price_per_kg_") | is.na(flags)) %>%
+    mutate(period_static = lubridate::floor_date(trip_date,
+                                                 unit = period_static_unit),
+           period_seasonal = period_seasonal_function(trip_date),
+           period_seasonal = as.character(period_seasonal),
+           wday = lubridate::wday(trip_date, label = T)) %>%
+    left_join(peskadat_stations, by = c("trip_landing_site" = "station_code")) %>%
+    filter(!is.na(municipality_name), !is.na(trip_gear), !is.na(boat_type)) %>%
+    mutate(trip_catch_po = round(trip_catch*10),
+           trip_catch_po_3 = round((trip_catch*1000)^(1/3)),
+           period_static = as.character(period_static)) %>%
+    slice_sample(prop = 1)
+#
+#   zi3 <- brm(trip_catch_po_3 ~ (1 | trip_gear) +
+#                (1 | municipality_name) +
+#                (1 | boat_type) + (1 | period_static),
+#            data = model_data,
+#            prior = c(prior(normal(3, 3), class = Intercept),
+#                      prior(student_t(3, 0, 1.5), class = sd)),
+#            family = zero_inflated_poisson,
+#            chains = 2, cores = 2,
+#            backend = "cmdstanr", threads = threading(2),
+#            iter = 1500,
+#            control = list(max_treedepth = 15, adapt_delta = 0.95),
+#            warmup = 1000)
+#
+#   p3o <- brm(trip_catch_po_3 ~ (1 | trip_gear) +
+#                 (1 | municipality_name) +
+#                 (1 | boat_type) + (1 | period_static) + (1| record_id),
+#               data = model_data,
+#               prior = c(prior(normal(3, 2), class = Intercept),
+#                         prior(student_t(3, 0, 1.5), class = sd)),
+#               family = poisson,
+#               chains = 2, cores = 2,
+#               backend = "cmdstanr", threads = threading(2),
+#               iter = 1500,
+#               control = list(max_treedepth = 15, adapt_delta = 0.95),
+#               warmup = 1000)
+
+  # zi3o <-
+  brm(trip_catch_po_3 ~ (1 | trip_gear) +
+        (1 | municipality_name) +
+        (1 | boat_type) + (1 | period_static) + (1| record_id),
+      data = model_data,
+      prior = c(prior(normal(3, 2), class = Intercept),
+                prior(student_t(3, 0, 1.5), class = sd)),
+      family = zero_inflated_poisson,
+      chains = 2, cores = 2,
+      backend = "cmdstanr", threads = threading(2),
+      iter = 1500,
+      control = list(max_treedepth = 12, adapt_delta = 0.98),
+      warmup = 1000)
+
+#
+#   add_fitted_draws(expand_grid(boat_type = unique(cm2[[3]]$data$boat_type)),
+#                    cm2[[3]], re_formula = ~ (1 | boat_type)) %>%
+#     ungroup() %>%
+#     mutate(x = boat_type) %>%
+#     mutate(x = fct_reorder(x, .value)) %>%
+#     ggplot(aes(x = (.value^3)/1000, y = x)) +
+#     stat_pointinterval()
+#
+#   gather_draws(cm2[[3]], r_boat_type[x,Intercept]) %>%
+#     ungroup() %>%
+#     # mutate(x = str_extract(x, "-[0-9]{2}-")) %>%
+#     mutate(x = fct_reorder(as.character(x), .value)) %>%
+#     ggplot(aes(x = .value, y = x)) +
+    # stat_pointinterval()
+
+  # list(zi3, p3o, zi3o)
+
+}
+
+
 
 function(kobo_trips_2,
          kobo_catch_2,

@@ -52,7 +52,9 @@ fit_models <- drake_plan(
   vessel_activity_model_q = model_vessel_activity_binomial(vessel_activity_bernoulli_q),
   species_price_model = target(command = model_species_price(kobo_trip_catch_wide,
                                                              peskadat_stations,
-                                                             period_static_unit = "year"))
+                                                             period_static_unit = "year")),
+  catch_model = model_catch(kobo_trips_with_price_tags,
+                            peskadat_stations)
 )
 
 post_process_data <- drake_plan(
