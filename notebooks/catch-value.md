@@ -106,3 +106,174 @@ kobo_trips_with_price_tags %>%
 ```
 
 ![](catch-value_files/figure-gfm/outliers-cum-dens-1.png)<!-- -->
+
+## Trip catch
+
+Modeling the catch and the value was pretty challenging. First the data
+contains lots of extreme values and is positively bounded, and as such a
+gaussian distribution is not suitable. It also is zero inflated and as
+such a student distribution, that would accommodate the extreme values
+is not suitable. A Zero-Inflated Poisson distribution accommodates for
+the positive only values and the zero inflation but strugles with the
+extreme values. A cubic root transformation of both catch and value
+(based on the rationale that volume expands cubically) seems to allow a
+well matching of the posterior distribution.
+
+The two factors with the largest effect in both catch and value were
+boat type and gear. Landings from motored boats tend to be larger and
+more valuable than those without. Average landings from seine nets seem
+to be much larger than caught using other methods. Manual collection
+landings tend to be the smallest and provide least income. Despite the
+importance of gear, without a way to accurately estimate the frequency
+with which each gear is used as a proportion of all trips, we would have
+use the overall mean to estimate annual catch and value, which will
+likely introduce a great deal of uncertainty in the estimates. We will
+later explore whether is possible to obtain this frequency estimate from
+the survey data or whether it is appropriate to use the overall
+estimation instead.
+
+``` r
+drake::loadd(catch_model)
+drake::loadd(value_model)
+
+p1 <- add_fitted_draws(expand_grid(trip_gear = c(unique(catch_model$data$trip_gear),
+                                           "Overall"),
+                             boat_type = unique(catch_model$data$boat_type)),
+                 catch_model, 
+                 re_formula = ~ (1 | trip_gear)+ (1 | boat_type), #  + (1|municipality_name), 
+                 allow_new_levels = T) %>% 
+  ungroup() %>%
+  mutate(trip_gear = fct_reorder(trip_gear, .value)) %>%
+  ggplot(aes(x = (.value^3)/1000, y = trip_gear)) +
+  stat_pointinterval(aes(colour = boat_type), .width = c(0.66, 0.95), 
+                     position = position_dodge(width = 0.4)) +
+  # facet_w("municipality_name", scales = "free_y") +
+  scale_color_manual(values = c("grey50", "black")) +
+  theme_minimal() +
+  # theme(legend.position = "none") +
+  labs(title = "Average catch landing weight", 
+       x = "Catch weight (kg)",
+       y = "Trip gear") 
+
+p2 <- add_fitted_draws(expand_grid(trip_gear = c(unique(value_model$data$trip_gear),
+                                           "Overall"),
+                             boat_type = unique(value_model$data$boat_type)),
+                 value_model, 
+                 re_formula = ~ (1 | trip_gear)+ (1 | boat_type), #  + (1|municipality_name), 
+                 allow_new_levels = T) %>% 
+  ungroup() %>%
+  mutate(trip_gear = fct_reorder(trip_gear, .value)) %>%
+  ggplot(aes(x = (.value^3)/1000, y = trip_gear)) +
+  stat_pointinterval(aes(colour = boat_type), .width = c(0.66, 0.95), 
+                     position = position_dodge(width = 0.4)) +
+  # facet_w("municipality_name", scales = "free_y") +
+  scale_color_manual(values = c("grey50", "black")) +
+  theme_minimal() +
+  # theme(legend.position = "none") +
+  labs(title = "Average catch landing value", 
+       x = "Catch value (USD)",
+       y = "Trip gear") 
+
+p1 + p2 + plot_layout(ncol = 1)
+```
+
+![](catch-value_files/figure-gfm/catch-gear-boat-1.png)<!-- -->
+
+Landing weights from different municipalities were also different. With
+Lautem and Atauro landing comparatively more than other municipalities.
+The landing value does not completely agrees with the weight though. For
+instance landings in Manufahi seem to involve a much smaller average
+catch weight per trip than other municipalities, but the value of these
+trips is larger than in other municipalities. These results are to be
+re-evaluated after codes from landing sites are correctly assigned to
+municipalities.
+
+``` r
+p1 <- add_fitted_draws(expand_grid(trip_gear = c("GN"),
+                             boat_type = "1", 
+                             municipality_name = c(unique(catch_model$data$municipality_name), "Overall")),
+                 catch_model, 
+                 re_formula = ~ (1 | trip_gear) + (1 | boat_type) + (1 | municipality_name), 
+                 allow_new_levels = T) %>% 
+  ungroup() %>%
+  mutate(municipality_name = fct_reorder(municipality_name, .value)) %>%
+  ggplot(aes(x = (.value^3)/1000, y = municipality_name)) +
+  stat_pointinterval() +
+  # facet_grid("trip_gear") +
+  # facet_grid(municipality_name ~ trip_gear, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Average catch landing weight", 
+       x = "Catch weight (kg)",
+       y = "Municipality", 
+       caption = "Averages shown for Gill Net catches in non motor boats")
+
+
+p2 <- add_fitted_draws(expand_grid(trip_gear = c("GN"),
+                             boat_type = "1", 
+                             municipality_name = c(unique(value_model$data$municipality_name), "Overall")),
+                 value_model, 
+                 re_formula = ~ (1 | trip_gear) + (1 | boat_type) + (1 | municipality_name), 
+                 allow_new_levels = T) %>% 
+  ungroup() %>%
+  mutate(municipality_name = fct_reorder(municipality_name, .value)) %>%
+  ggplot(aes(x = (.value^3)/1000, y = municipality_name)) +
+  stat_pointinterval() +
+  # facet_grid("trip_gear") +
+  # facet_grid(municipality_name ~ trip_gear, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Average catch landing value", 
+       x = "Catch value (USD)",
+       y = "Municipality", 
+       caption = "Averages shown for Gill Net catches in non motor boats")
+
+p1 + p2 + plot_layout(ncol = 1)
+```
+
+![](catch-value_files/figure-gfm/catch-municipality-1.png)<!-- -->
+
+Comparatively speaking, the month of the year had smaller impact on the
+catch and value although not insignificant.
+
+``` r
+p1 <- add_fitted_draws(expand_grid(trip_gear = c("GN"),
+                             boat_type = "1", 
+                             municipality_name = "Overall", 
+                             period_static = unique(catch_model$data$period_static)),
+                 catch_model, 
+                 re_formula = ~ (1 | trip_gear) + (1 | boat_type) + (1 | period_static), 
+                 allow_new_levels = T) %>% 
+  ungroup() %>%
+  mutate(period_static = lubridate::as_date(period_static)) %>%
+  ggplot(aes(y = (.value^3)/1000, x = period_static)) +
+  stat_lineribbon(aes(alpha = forcats::fct_rev(ordered(stat(.width)))), 
+                  .width = c(0.05, 0.66, 0.95), size = 0.5, fill = "black") +
+  scale_alpha_manual(values = c(0.05, 0.33, 0.95), name = "Credible interval") +
+  theme_minimal() +
+  labs(title = "Average catch landing weight", 
+       y = "Catch weight (kg)",
+       x = "Date", 
+       caption = "Averages shown for Gill Net catches in non motor boats")
+
+p2 <-add_fitted_draws(expand_grid(trip_gear = c("GN"),
+                             boat_type = "1", 
+                             municipality_name = "Overall", 
+                             period_static = unique(value_model$data$period_static)),
+                 value_model, 
+                 re_formula = ~ (1 | trip_gear) + (1 | boat_type) + (1 | period_static), 
+                 allow_new_levels = T) %>% 
+  ungroup() %>%
+  mutate(period_static = lubridate::as_date(period_static)) %>%
+  ggplot(aes(y = (.value^3)/1000, x = period_static)) +
+  stat_lineribbon(aes(alpha = forcats::fct_rev(ordered(stat(.width)))), 
+                  .width = c(0.05, 0.66, 0.95), size = 0.5, fill = "black") +
+  scale_alpha_manual(values = c(0.05, 0.33, 0.95), name = "Credible interval") +
+  theme_minimal() +
+  labs(title = "Average catch landing value", 
+       x = "Date",
+       y = "Catch value (USD)", 
+       caption = "Averages shown for Gill Net catches in non motor boats")
+
+p1 + p2 + plot_layout(ncol = 1)
+```
+
+![](catch-value_files/figure-gfm/catch-period-1.png)<!-- -->

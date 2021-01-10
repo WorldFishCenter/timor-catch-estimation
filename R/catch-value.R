@@ -174,7 +174,8 @@ model_catch <- function(kobo_trips_with_price_tags,
       prior = c(prior(normal(3, 2), class = Intercept),
                 prior(student_t(3, 0, 1.5), class = sd)),
       family = zero_inflated_poisson,
-      chains = 2, cores = 2,
+      chains = 2,
+      cores = 4,
       backend = "cmdstanr", threads = threading(2),
       iter = 1500,
       control = list(max_treedepth = 12, adapt_delta = 0.98),
@@ -200,7 +201,75 @@ model_catch <- function(kobo_trips_with_price_tags,
 
 }
 
+model_value <- function(kobo_trips_with_price_tags,
+                        peskadat_stations,
+                        period_static_unit = "month",
+                        period_seasonal_function = lubridate::month){
 
+  suppressPackageStartupMessages({
+    library(tidyverse)
+    library(brms)
+  })
+
+  model_data <- kobo_trips_with_price_tags %>%
+    filter(!str_detect(flags, "price_per_kg_") | is.na(flags)) %>%
+    mutate(period_static = lubridate::floor_date(trip_date,
+                                                 unit = period_static_unit),
+           period_seasonal = period_seasonal_function(trip_date),
+           period_seasonal = as.character(period_seasonal),
+           wday = lubridate::wday(trip_date, label = T)) %>%
+    left_join(peskadat_stations, by = c("trip_landing_site" = "station_code")) %>%
+    filter(!is.na(municipality_name), !is.na(trip_gear), !is.na(boat_type)) %>%
+    mutate(trip_catch_po = round(trip_catch*10),
+           trip_catch_po_3 = round((trip_catch*1000)^(1/3)),
+           period_static = as.character(period_static),
+           trip_value_po_3 = round((trip_value*1000)^(1/3))) %>%
+    slice_sample(prop = 1)
+
+
+    # zi3 <- brm(trip_value_po_3 ~ (1 | trip_gear) +
+    #              (1 | municipality_name) +
+    #              (1 | boat_type) + (1 | period_static),
+    #          data = model_data,
+    #          prior = c(prior(normal(3, 3), class = Intercept),
+    #                    prior(student_t(3, 0, 1.5), class = sd)),
+    #          family = zero_inflated_poisson,
+    #          chains = 2, cores = 2,
+    #          backend = "cmdstanr", threads = threading(2),
+    #          iter = 1500,
+    #          control = list(max_treedepth = 15, adapt_delta = 0.95),
+    #          warmup = 1000)
+    #
+    # p3o <- brm(trip_value_po_3 ~ (1 | trip_gear) +
+    #               (1 | municipality_name) +
+    #               (1 | boat_type) + (1 | period_static) + (1| record_id),
+    #             data = model_data,
+    #             prior = c(prior(normal(3, 2), class = Intercept),
+    #                       prior(student_t(3, 0, 1.5), class = sd)),
+    #             family = poisson,
+    #             chains = 2, cores = 2,
+    #             backend = "cmdstanr", threads = threading(2),
+    #             iter = 1500,
+    #             control = list(max_treedepth = 15, adapt_delta = 0.95),
+    #             warmup = 1000)
+
+  # zi3o <-
+  brm(trip_value_po_3 ~ (1 | trip_gear) +
+        (1 | municipality_name) +
+        (1 | boat_type) + (1 | period_static) + (1| record_id),
+      data = model_data,
+      prior = c(prior(normal(3, 2), class = Intercept),
+                prior(student_t(3, 0, 1.5), class = sd)),
+      family = zero_inflated_poisson,
+      chains = 2, cores = 2,
+      backend = "cmdstanr", threads = threading(2),
+      iter = 1500,
+      control = list(max_treedepth = 15, adapt_delta = 0.98),
+      warmup = 1000)
+
+  # list(zi3, p3o, zi3o)
+
+}
 
 function(kobo_trips_2,
          kobo_catch_2,

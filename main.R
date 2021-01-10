@@ -54,7 +54,9 @@ fit_models <- drake_plan(
                                                              peskadat_stations,
                                                              period_static_unit = "year")),
   catch_model = model_catch(kobo_trips_with_price_tags,
-                            peskadat_stations)
+                            peskadat_stations),
+  value_model = model_value(kobo_trips_with_price_tags,
+                            peskadat_stations),
 )
 
 post_process_data <- drake_plan(
