@@ -57,6 +57,8 @@ fit_models <- drake_plan(
                             peskadat_stations),
   value_model = model_value(kobo_trips_with_price_tags,
                             peskadat_stations),
+  trip_gear_model = model_trip_gear(kobo_trips,
+                                    peskadat_stations),
 )
 
 post_process_data <- drake_plan(
