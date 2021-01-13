@@ -23,20 +23,20 @@ coefficient modelling.
     generate activity estimates at the national level might be severely
     compromised in 1 to 3 years time.
   - There are large gaps in data availability in tracking data. The
-    origin of these gaps is unknown and until we know more about it, it
+    origin of this gaps is unknown and until we know more about it, it
     may call to question the reliability of the service.
-  - A significant number of boat trackers stopped being operational (last
-    heard of) simultaneously. These events are prominent at the
+  - Significant number of boat trackers stopped being operational (last
+    heard off) simultaneously. These events are prominent at the
     beginning of the first quarter 2019 and the beginning of the second
     quarter 2020. The reason for this decline is currently unknown and
     warrants further investigation of the failure rate of tracking
     devices.
-  - New devices should be deployed aiming to improve coverage of
+  - New devices should be deployed aiming to improve covering of
     under-sampled municipalities and boat types.
   - The tracking data highlights some potential inaccuracies with the
     fisher/boat counts per municipality. In one of the locations the
     number of tracking devices installed is larger than the recorded
-    number of boats. 
+    number of boats.
   - Substantial improvements in the PDS detection algorithm or
     sufficient post-processing methods are needed before it can be used
     ready for fisher-level analytics.
@@ -128,35 +128,16 @@ cowplot::plot_grid(count_plot, proportion_plot, ncol = 2)
 ``` r
 drake::loadd(vessel_activity_model_brms)
 
-monthly_predictions_overall <- function(x, y){
-  nd <- x$data %>%
-    distinct(period_static) %>%
-    mutate(data_available = TRUE, 
-           period_static = lubridate::as_date(period_static)) %>%
-    complete(period_static = seq(min(period_static), 
-                                                    max(period_static), "month"), 
-             fill = list(data_available = FALSE)) %>%
-    mutate(period_seasonal = lubridate::month(period_static), 
-           n_days = lubridate::days_in_month(period_seasonal),
-           boat_code = y,
-           prediction_id = as.character(1:n())) 
-  
-  x %>%
-    posterior_epred(nd, 
-                    re_formula = ~ (1 | period_static) +
-                      (1 | period_seasonal), 
-                    allow_new_levels = TRUE) %>% 
-    set_colnames(as.character(nd$prediction_id)) %>%
-    as.data.frame.table() %>%
-    dplyr::mutate(prediction_id = Var2) %>%
-    dplyr::rename(Estimate = Freq, sample = Var1) %>%
-    dplyr::inner_join(nd, by = "prediction_id") %>%
-    tibble::as_tibble() %>%
-    dplyr::select(-Var2)
+pred_overall <- function(x){
+  nd <- tibble(period_static = unique(x$data$period_static), 
+             n_days = 1) %>%
+  mutate(period_seasonal = lubridate::month(lubridate::ymd(period_static)))
+  add_fitted_draws(nd, x, re_formula = ~ (1 | period_seasonal) + (1 | period_static))
 }
 
-imap_dfr(vessel_activity_model_brms, monthly_predictions_overall) %>%
-  ggplot(aes(x = period_static, y = Estimate, fill = boat_code, colour = boat_code)) + 
+map_df(vessel_activity_model_brms, pred_overall, .id = "boat_code") %>%
+  mutate(period_static = lubridate::ymd(period_static)) %>%
+  ggplot(aes(x = period_static, y = .value, fill = boat_code, colour = boat_code)) +
   stat_lineribbon(aes(alpha = forcats::fct_rev(ordered(stat(.width)))), 
                   .width = c(0.05, 0.66, 0.95), size = 0.5) +
   facet_grid(cols = vars(boat_code)) +
@@ -172,36 +153,20 @@ imap_dfr(vessel_activity_model_brms, monthly_predictions_overall) %>%
 ![](vessel-activity_files/figure-gfm/model-predictions-overall-1.png)<!-- -->
 
 ``` r
-monthly_predictions_site <- function(x, y){
-  nd <- x$data %>%
-    distinct(municipality_name, period_static) %>%
-    mutate(data_available = TRUE, 
-           period_static = lubridate::as_date(period_static)) %>%
-    complete(municipality_name, period_static = seq(min(period_static), 
-                                                    max(period_static), "month"), 
-             fill = list(data_available = FALSE)) %>%
-    mutate(period_seasonal = lubridate::month(period_static), 
-           n_days = lubridate::days_in_month(period_seasonal),
-           boat_code = y,
-           prediction_id = as.character(1:n())) 
-  
-  x %>%
-    posterior_epred(nd, 
-                    re_formula = ~ (1 | municipality_name) + (1 | period_static) +
-                      (1 | municipality_name : period_static) + 
-                      (1 | period_seasonal), 
-                    allow_new_levels = TRUE) %>% 
-    set_colnames(as.character(nd$prediction_id)) %>%
-    as.data.frame.table() %>%
-    dplyr::mutate(prediction_id = Var2) %>%
-    dplyr::rename(Estimate = Freq, sample = Var1) %>%
-    dplyr::inner_join(nd, by = "prediction_id") %>%
-    tibble::as_tibble() %>%
-    dplyr::select(-Var2)
+pred_mun <- function(x){
+  nd_mun <- expand_grid(
+    period_static = unique(x$data$period_static), 
+    municipality_name = unique(x$data$municipality_name),
+    n_days = 1) %>%
+    mutate(period_seasonal = lubridate::month(lubridate::ymd(period_static)))
+  add_fitted_draws(nd_mun, x, re_formula = ~ (1 | period_seasonal) + (1 | period_static) +
+                            (1 | municipality_name) + (1 | municipality_name : period_static), 
+                          allow_new_levels = TRUE)
 }
 
-imap_dfr(vessel_activity_model_brms, monthly_predictions_site) %>%
-  ggplot(aes(x = period_static, y = Estimate, fill = boat_code, colour = boat_code)) + 
+map_df(vessel_activity_model_brms, pred_mun, .id = "boat_code") %>%
+  mutate(period_static = lubridate::ymd(period_static)) %>%
+  ggplot(aes(x = period_static, y = .value, fill = boat_code, colour = boat_code)) + 
   stat_lineribbon(aes(alpha = forcats::fct_rev(ordered(stat(.width)))), 
                   .width = c(0.05, 0.66, 0.95), size = 0.5) +
   facet_wrap(vars(municipality_name), ncol = 3) +
@@ -217,31 +182,18 @@ imap_dfr(vessel_activity_model_brms, monthly_predictions_site) %>%
 ![](vessel-activity_files/figure-gfm/model-predictions-persite-1.png)<!-- -->
 
 ``` r
-predictions_site <- function(x, y){
-  nd <- x$data %>%
-    distinct(municipality_name) %>%
-    mutate(data_available = TRUE) %>%
-    complete(municipality_name) %>%
-    mutate(n_days = 30,
-           boat_code = y,
-           prediction_id = as.character(1:n())) 
-  
-  x %>%
-    posterior_epred(nd, 
-                    re_formula = ~ (1 | municipality_name), 
-                    allow_new_levels = TRUE) %>% 
-    set_colnames(as.character(nd$prediction_id)) %>%
-    as.data.frame.table() %>%
-    dplyr::mutate(prediction_id = Var2) %>%
-    dplyr::rename(Estimate = Freq, sample = Var1) %>%
-    dplyr::inner_join(nd, by = "prediction_id") %>%
-    tibble::as_tibble() %>%
-    dplyr::select(-Var2)
+pred_site <- function(x){
+  nd <- expand_grid(
+    municipality_name = unique(x$data$municipality_name),
+    n_days = 30) 
+  add_fitted_draws(nd, x, re_formula = ~ (1 | municipality_name), 
+                          allow_new_levels = TRUE)
 }
 
-imap_dfr(vessel_activity_model_brms, predictions_site) %>%
-  mutate(municipality_name = fct_reorder(municipality_name, Estimate)) %>%
-  ggplot(aes(y = municipality_name, x = Estimate, fill = boat_code, colour = boat_code)) + 
+map_df(vessel_activity_model_brms, pred_site, .id = "boat_code") %>% 
+  ungroup() %>%
+  mutate(municipality_name = fct_reorder(municipality_name, .value)) %>%
+  ggplot(aes(y = municipality_name, x = .value, fill = boat_code, colour = boat_code)) + 
   stat_pointinterval(.width = c(0.66, 0.95), position = position_dodge(0.4)) +
   scale_fill_brewer(palette = "Set1", aesthetics = c("colour", "fill"), 
                     name = "Boat type") +
