@@ -224,7 +224,7 @@ p1 <- add_fitted_draws(expand_grid(trip_gear = c("GN"),
        x = "Date", 
        caption = "Averages shown for Gill Net catches in non motor boats")
 
-p2 <-add_fitted_draws(expand_grid(trip_gear = c("GN"),
+p2 <- add_fitted_draws(expand_grid(trip_gear = c("GN"),
                              boat_type = "1", 
                              municipality_name = "Overall", 
                              period_static = unique(value_model$data$period_static)),
@@ -307,7 +307,7 @@ new_data <-
   expand_grid(
     municipality_name = unique(peskadat_municipalities$municipality_name),
     boat_type = c("canoe", "motor"),
-    period_static = seq(ymd("2017-01-01"), ymd("2020-12-31"), "month")) %>%
+    period_static = seq(ymd("2017-01-01"), ymd("2021-02-28"), "month")) %>%
   wrangle_new_data()
 
 fitted_boats <- map2_dfr(split(new_data, new_data$boat_type_name),
@@ -373,7 +373,7 @@ fitted_gear <- add_fitted_draws(newdata = new_data,
 new_data_gear <- expand_grid(
     municipality_name = unique(peskadat_municipalities$municipality_name),
     boat_type = c("canoe", "motor"),
-    period_static = seq(ymd("2017-01-01"), ymd("2020-12-31"), "month"), 
+    period_static = seq(ymd("2017-01-01"), ymd("2021-02-28"), "month"), 
     trip_gear = unique(catch_model$data$trip_gear)) %>%
   wrangle_new_data()
 
@@ -404,8 +404,9 @@ fitted_value_gear <- add_fitted_draws(newdata = new_data_gear,
   select(- .value, - .row, - .chain, -.iteration)
 
 estimations_gear <- fitted_boats %>%
-  inner_join(fitted_gear) %>% 
-  mutate(n_trips = n_trips * gear_prop) %>%
+  inner_join(fitted_gear) %>%
+  mutate(n_trips_total = n_trips) %>%
+  mutate(n_trips = n_trips * gear_prop) %>% 
   inner_join(fitted_weight_gear) %>%
   inner_join(fitted_value_gear) %>%
   mutate(across(c(catch_weight, catch_value), ~(.^3)/1000),
@@ -429,7 +430,13 @@ We use gear adjusted estimates from now on, but this is pending corroboration on
 ```{r total-with-without-gear}
 annual_2020 <- mutate(estimations_gear, est = "accounting for fishing gear") %>%
   bind_rows(mutate(estimations_no_gear, est = "not accounting for fishing gear")) %>%
-  filter(period_static >= ymd("2020-01-01")) %>%
+  filter(period_static >= ymd("2020-01-01"), period_static <= ymd("2020-12-01")) %>% 
+  group_by(est, .draw) %>%
+  summarise(across(where(is.numeric), sum))
+
+annual_2019 <- mutate(estimations_gear, est = "accounting for fishing gear") %>%
+  bind_rows(mutate(estimations_no_gear, est = "not accounting for fishing gear")) %>%
+  filter(period_static >= ymd("2019-01-01"), period_static <= ymd("2019-12-01")) %>% 
   group_by(est, .draw) %>%
   summarise(across(where(is.numeric), sum))
 
