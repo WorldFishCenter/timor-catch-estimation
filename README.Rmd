@@ -19,19 +19,20 @@ One can use gsutil to simplify this
 
 ```{bash, eval = F}
 gsutil cp \
-gs://timor/timor-all_points_2020-12-03_000000000000.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000001.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000002.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000003.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000004.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000005.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000006.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000007.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000008.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000009.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000010.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000011.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000012.csv.gz \
-gs://timor/timor-all_points_2020-12-03_000000000013.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000000.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000001.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000002.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000003.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000004.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000005.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000006.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000007.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000008.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000009.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000010.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000011.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000012.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000013.csv.gz \
+gs://timor/timor-all_points_2021-03-14_000000000014.csv.gz \
 .
 ```

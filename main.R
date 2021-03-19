@@ -12,7 +12,7 @@ f <- lapply(list.files(path = here::here("R"), full.names = TRUE,
 read_data <- drake_plan(
   boats_pds = clean_boats(file_in("data/raw/timor-boats.csv")),
   trips_pds = clean_trips(file_in("data/raw/timor-trips.csv")),
-  trips_from_points = clean_trips_from_points(file_in("data/processed/trips.csv")),
+  trips_from_points = clean_trips_from_points(file_in("data/processed/trips2.csv")),
   peskadat_species = clean_peskasdat_species(file_in("data/raw/peskaDAT-species.csv")),
   peskadat_boats = clean_peskasdat_boats(file_in("data/raw/peskaDAT-boats.csv")),
   peskadat_municipalities = clean_peskadat_municipalities(file_in("data/raw/peskaDAT-municipalities.csv")),

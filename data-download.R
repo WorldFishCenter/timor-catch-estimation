@@ -52,4 +52,4 @@ bq_table_save(peksas_timor_points,
               compression = "GZIP",
               destination_uris = dest_uri_gstorage)
 
-bq_table_delete(peskas_timor_points)
+bq_table_delete(peksas_timor_points)

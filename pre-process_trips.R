@@ -1,5 +1,5 @@
-files <- list.files("data/raw/peskas-tracking/",
-                    pattern = "pelagic-data-daily_.+csv$",
+files <- list.files("data/raw/peskas-tracking2",
+                    pattern = "timor_all",
                     full.names = TRUE)
 
 library(magrittr)
@@ -63,4 +63,4 @@ process_track_file_dt <- function(x){
 o <- files %>%
   purrr::map_dfr(purrr::auto_browse(process_track_file_dt))
 
-fwrite(o, "data/processed/trips.csv")
+fwrite(o, "data/processed/trips2.csv")
